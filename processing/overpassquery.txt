@@ -1,0 +1,28 @@
+[out:json][timeout:60];
+area["ISO3166-1"="HR"][admin_level=2]->.hr;
+
+(
+  // Supermarkets
+  node["shop"="supermarket"](area.hr);
+  way["shop"="supermarket"](area.hr);
+  relation["shop"="supermarket"](area.hr);
+
+  // General stores
+  node["shop"="general"](area.hr);
+  way["shop"="general"](area.hr);
+  relation["shop"="general"](area.hr);
+
+  // Grocery stores
+  node["shop"="grocery"](area.hr);
+  way["shop"="grocery"](area.hr);
+  relation["shop"="grocery"](area.hr);
+
+  // Convenience stores
+  node["shop"="convenience"](area.hr);
+  way["shop"="convenience"](area.hr);
+  relation["shop"="convenience"](area.hr);
+
+
+);
+
+out center;
