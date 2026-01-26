@@ -6,9 +6,8 @@ import project.models.Problem;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SeedingGenerator implements Generator<MatrixChromosome> {
+public class SeedingGenerator extends ForStoresGenerator {
 
-    private final List<String> storeIds;
     private final List<MatrixChromosome> seeds;
     private final Generator<MatrixChromosome> fallbackGenerator;
 
@@ -17,6 +16,7 @@ public class SeedingGenerator implements Generator<MatrixChromosome> {
      * @param seeds    Optional list of individuals to copy from. Can be null or empty.
      */
     public SeedingGenerator(List<String> storeIds, List<MatrixChromosome> seeds, Generator<MatrixChromosome> fallbackGenerator) {
+        super(storeIds);
         this.storeIds = storeIds;
         this.seeds = seeds;
         this.fallbackGenerator = fallbackGenerator;
@@ -80,4 +80,8 @@ public class SeedingGenerator implements Generator<MatrixChromosome> {
     }
 
 
+    @Override
+    public ForStoresGenerator copyOf() {
+        return new SeedingGenerator(new ArrayList<>(this.storeIds), this.seeds, this.fallbackGenerator);
+    }
 }

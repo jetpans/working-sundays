@@ -17,10 +17,8 @@ public class FastIntersectUnionFitness implements Fitness<MatrixChromosome> {
     private static final double COS_LAT0 = Math.cos(LAT0);
 
     // Configurable constant
-    private final double maxRadiusOfInfluence;
 
-    public FastIntersectUnionFitness(double maxRadiusOfInfluence) {
-        this.maxRadiusOfInfluence = maxRadiusOfInfluence;
+    public FastIntersectUnionFitness() {
     }
 
     @Override
@@ -68,13 +66,6 @@ public class FastIntersectUnionFitness implements Fitness<MatrixChromosome> {
 
         for (int sunday = 0; sunday < numSundays; sunday++) {
             // 1. Calculate Sum of Weights for this Sunday
-            double sumWeights = 0.0;
-            for (int row = 0; row < numStores; row++) {
-                sumWeights += matrix.get(row, sunday);
-            }
-
-            // Avoid division by zero
-            if (sumWeights == 0) sumWeights = 1.0;
 
             // 2. Determine active boxes and their dimensions
             int activeCount = 0;
@@ -82,8 +73,7 @@ public class FastIntersectUnionFitness implements Fitness<MatrixChromosome> {
             for (int i = 0; i < numStores; i++) {
                 double weight = matrix.get(i, sunday);
                 if (weight > 0) {
-                    // Radius formula: sqrt(weight / sum) * MAX_RADIUS
-                    double r = Math.sqrt(weight / sumWeights) * maxRadiusOfInfluence;
+                    double r = weight;
 
                     double x = storeX[i];
                     double y = storeY[i];

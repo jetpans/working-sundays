@@ -6,8 +6,9 @@ import random
 from util import load_json, store_json, count_sundays
 # constraint_sample = {"id": "relation/6308508", "works":[0,4,7,12,13], "doesnt_work":[2,3,5,15]}
 FOR_YEAR = 2025
-MAX_WORKS = 14
+MAX_WORKS = 3
 sunday_count = count_sundays(FOR_YEAR)
+sunday_count = 10
 MAX_DOESNT_WORK = sunday_count - MAX_WORKS
 
 data = load_json("data/rawdata.json")
@@ -29,4 +30,4 @@ for id_ in data.keys():
 
 
 print(constraints)
-store_json(constraints, "data/constraints.json")
+store_json(constraints, "data/constraints_twosunday.json")

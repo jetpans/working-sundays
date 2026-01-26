@@ -11,20 +11,10 @@ public class StoreData {
     public final int ratingCount;
     public final String formattedAddress;
     public final Point2D.Double location;
-    public final double metric;
+    public double radius;
 
-    public interface MetricComputer {
-        double compute(StoreData entry);
-    }
 
-    public static class RatingCountMetric implements MetricComputer {
-        @Override
-        public double compute(StoreData entry) {
-            return entry.ratingCount;
-        }
-    }
-
-    public StoreData(String storeId, String name, String brand, double rating, int ratingCount, String formattedAddress, Point2D.Double location, MetricComputer metricComputer) {
+    public StoreData(String storeId, String name, String brand, double rating, int ratingCount, String formattedAddress, Point2D.Double location, double radius) {
         this.storeId = storeId;
         this.name = name;
         this.brand = brand;
@@ -32,7 +22,7 @@ public class StoreData {
         this.ratingCount = ratingCount;
         this.formattedAddress = formattedAddress;
         this.location = location;
-        this.metric = metricComputer.compute(this);
+        this.radius = radius;
     }
 
     @Override

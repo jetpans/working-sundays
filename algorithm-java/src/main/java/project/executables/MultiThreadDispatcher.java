@@ -1,7 +1,9 @@
-package project;
+package project.executables;
 
+import project.Util;
 import project.genetic.chromosome.MatrixChromosome;
-import project.genetic.generator.SeedingGenerator;
+import project.genetic.generator.AllSundaysHaveWorkGenerator;
+import project.models.Cluster;
 import project.models.Global;
 import project.models.Problem;
 import project.settings.Settings;
@@ -9,24 +11,56 @@ import project.settings.Settings;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 
-public class Dispatcher {
+import static project.executables.Dispatcher.solveSubProblem;
+import static project.executables.Dispatcher.storeFinalSolution;
+
+public class MultiThreadDispatcher {
 
     public static void main(String[] args) {
-        Problem.load(args[0], args[1]);
-        Settings<MatrixChromosome> settings = Settings.getSettings("project.settings.DemoSettings");
 
-        List<List<String>> clusters = Util.generateClusters(Problem.getInstance().storeIds, 5, 3, Global.RANDOM);
+        String instanceFolder = args[0];
+        int numThreads = Integer.parseInt(args[1]);
+        String dataPath = instanceFolder + "/data.json";
+        String constraintPath = instanceFolder + "/constraints.json";
+        Problem.load(constraintPath, dataPath);
+        Settings<MatrixChromosome> settings = Settings.getSettings("project.settings.SmallRunSettings");
+        List<List<String>> clusters = Util.generateClusters(Problem.getInstance().storeIds, 3, Global.MAX_CLUSTER_DISTANCE, Global.RANDOM);
 
         List<Cluster> currentPool = new ArrayList<>();
         List<Cluster> solved = new ArrayList<>();
         for (List<String> clusterStoreIds : clusters) {
             currentPool.add(new Cluster(clusterStoreIds));
         }
+
+        MatrixChromosome randomSol = new AllSundaysHaveWorkGenerator(Problem.getInstance().storeIds).generate();
+        MatrixChromosome.toFile(randomSol, "D:\\Coding\\FAKS\\Mentor\\working-sundays\\results\\java\\random.sol");
+
+        ThreadPoolExecutor executor = (ThreadPoolExecutor) java.util.concurrent.Executors.newFixedThreadPool(numThreads);
+
         while (!currentPool.isEmpty()) {
+//            for (Cluster c : currentPool) {
+//                c.solution = solveSubProblem(settings, c.storeIds, c.seeds);
+//            }
+            List<Future<MatrixChromosome>> futures = new ArrayList<>();
             for (Cluster c : currentPool) {
-                c.solution = solveSubProblem(settings, c.storeIds, c.seeds);
+                final Cluster cfinal = c;
+                Future<MatrixChromosome> future = executor.submit(() -> solveSubProblem(Settings.copyOf(settings), cfinal.storeIds, cfinal.seeds));
+                futures.add(future);
             }
+            for (int i = 0; i < currentPool.size(); i++) {
+                try {
+                    MatrixChromosome solution = futures.get(i).get();
+                    currentPool.get(i).solution = solution;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    System.exit(-1);
+                }
+            }
+
+
             List<Cluster> nextPool = new ArrayList<>();
 
             while (!currentPool.isEmpty()) {
@@ -66,29 +100,12 @@ public class Dispatcher {
                     // Cannot merge, finalize this cluster
                     solved.add(current);
                 }
-                currentPool = nextPool;
+
             }
+            currentPool = nextPool;
         }
-
-
-    }
-
-    public static class Cluster {
-        public List<String> storeIds;
-        public MatrixChromosome solution;
-        public List<MatrixChromosome> seeds = new ArrayList<>();
-
-        public Cluster(List<String> storeIds) {
-            this.storeIds = storeIds;
-        }
-    }
-
-
-    public static MatrixChromosome solveSubProblem(Settings subProblemSettings, List<String> storeIds, List<MatrixChromosome> existingSolutions) {
-        if (!existingSolutions.isEmpty()) {
-            subProblemSettings.generator = new SeedingGenerator(storeIds, existingSolutions, subProblemSettings.generator);
-        }
-        DemoAlgorithm<MatrixChromosome> algo = new DemoAlgorithm<>(subProblemSettings);
-        return algo.run().getLast();
+        // Make directories
+        executor.shutdown();
+        storeFinalSolution(solved, "D:\\Coding\\FAKS\\Mentor\\working-sundays\\results\\java\\optimized.sol");
     }
 }

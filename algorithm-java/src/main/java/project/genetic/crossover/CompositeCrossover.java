@@ -1,6 +1,7 @@
 package project.genetic.crossover;
 
 import project.genetic.chromosome.Chromosome;
+import project.genetic.chromosome.MatrixChromosome;
 import project.models.Global;
 
 import java.util.List;
@@ -26,7 +27,7 @@ public class CompositeCrossover<T extends Chromosome> implements Crossover<T> {
     @Override
     public List<T> crossover(T parent1, T parent2) {
         if (Global.RANDOM.nextDouble() > p) {
-            return List.of(parent1, parent2);
+            return (List<T>) List.of(new MatrixChromosome((MatrixChromosome) parent1), new MatrixChromosome((MatrixChromosome) parent2));
         }
         double rand = Global.RANDOM.nextDouble();
         double cumulativeWeight = 0.0;

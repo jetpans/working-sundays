@@ -7,7 +7,6 @@ import util
 # Maximization fitness
 import time
 import numpy as np
-from constants import MAX_RADIUS_OF_INFLUENCE
 from tqdm import tqdm
 
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
@@ -88,7 +87,7 @@ def main():
 
 
 def test():
-    clusters = load_json("data/simple_cluster.json")
+    clusters = load_json("data/one_cluster_cluster.json")
     constraints = load_json("data/constraints.json")
     data = load_json("data/sample_profit.json")
 
@@ -98,10 +97,7 @@ def test():
     f_fitness = FastIntersectUnionFitness(cluster, constraints, data)
     rnd_ind = create_individual_heuristic1(cluster, constraints, data)
 
-    sums = rnd_ind.big_matrix.sum(axis=0, keepdims=True)
-    sums[sums == 0] = 1
-    solution_matrix = rnd_ind.big_matrix / sums
-    solution_matrix = np.sqrt(solution_matrix) * MAX_RADIUS_OF_INFLUENCE
+    solution_matrix = np.array(rnd_ind.model)
 
     data_per_sunday = []
     data_per_sunday1 = []
@@ -122,15 +118,17 @@ def test():
     print(f"Max diff: {m}")
     print(f"Average diff: {np.average(np.abs(data_per_sunday) - np.average(data_per_sunday1))}")
     start = time.time()
-    f1 = fitness(rnd_ind)
+    for _ in range(1000):
+        f1 = fitness(rnd_ind)
     end = time.time()
-    print(f"Time taken for fitness calculation: {end - start} seconds")
+    print(f"Time taken for 1000 fitness calculation: {end - start} seconds")
     start = time.time()
-    f2 = f_fitness(rnd_ind)
+    for _ in range(1000):
+        f2 = f_fitness(rnd_ind)
     end = time.time()
-    print(f"Time taken for fast fitness calculation: {end - start} seconds")
+    print(f"Time taken for 1000 fast fitness calculation: {end - start} seconds")
     print(f"Difference in fitness: {f1[0] - f2[0]}")
 
 
 if __name__ == "__main__":
-    main()
+    test()

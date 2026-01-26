@@ -19,11 +19,9 @@ public class CorrectFitness implements Fitness<MatrixChromosome> {
     private static final double LON0 = Math.toRadians(15.2000);
     private static final double COS_LAT0 = Math.cos(LAT0);
 
-    private final double maxRadiusOfInfluence;
     private final GeometryFactory geometryFactory;
 
-    public CorrectFitness(double maxRadiusOfInfluence) {
-        this.maxRadiusOfInfluence = maxRadiusOfInfluence;
+    public CorrectFitness() {
         this.geometryFactory = new GeometryFactory();
     }
 
@@ -51,13 +49,10 @@ public class CorrectFitness implements Fitness<MatrixChromosome> {
 
         double totalScore = 0.0;
 
+
         for (int sunday = 0; sunday < numSundays; sunday++) {
             // 2. Normalize column weights
-            double sumWeights = 0.0;
-            for (int r = 0; r < numStores; r++) {
-                sumWeights += matrix.get(r, sunday);
-            }
-            if (sumWeights == 0) sumWeights = 1.0;
+
 
             // 3. Create Boxes (Geometry)
             List<Geometry> currentSundayBoxes = new ArrayList<>();
@@ -65,7 +60,7 @@ public class CorrectFitness implements Fitness<MatrixChromosome> {
             for (int i = 0; i < numStores; i++) {
                 double val = matrix.get(i, sunday);
                 if (val > 0) {
-                    double radius = Math.sqrt(val / sumWeights) * maxRadiusOfInfluence;
+                    double radius = val;
                     double x = storeX[i];
                     double y = storeY[i];
 

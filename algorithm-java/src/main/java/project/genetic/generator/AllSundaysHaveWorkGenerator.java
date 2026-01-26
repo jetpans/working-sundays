@@ -6,12 +6,15 @@ import project.models.Problem;
 
 import java.util.*;
 
-public class AllSundaysHaveWorkGenerator implements Generator<MatrixChromosome> {
-
-    private List<String> storeIds;
+public class AllSundaysHaveWorkGenerator extends ForStoresGenerator {
 
     public AllSundaysHaveWorkGenerator(List<String> storeIds) {
-        this.storeIds = storeIds;
+        super(storeIds);
+    }
+
+    @Override
+    public ForStoresGenerator copyOf() {
+        return new AllSundaysHaveWorkGenerator(new ArrayList<>(this.storeIds));
     }
 
     @Override

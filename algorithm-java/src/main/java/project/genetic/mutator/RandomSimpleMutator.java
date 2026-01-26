@@ -17,7 +17,9 @@ public class RandomSimpleMutator implements Mutator<MatrixChromosome> {
         if (Global.RANDOM.nextDouble() > p) return;
 
         for (int blah = 0; blah < numMutations; blah++) {
+            if (c.getModel().isEmpty()) continue;
             int storeIndex = Global.RANDOM.nextInt(c.getModel().size());
+            if (c.getModel(storeIndex).isEmpty() || c.getAntiModel(storeIndex).isEmpty()) continue;
             int r = Global.RANDOM.nextInt(c.getModel(storeIndex).size());
             c.fromModelToAntiModel(storeIndex, r);
             r = Global.RANDOM.nextInt(c.getAntiModel(storeIndex).size());

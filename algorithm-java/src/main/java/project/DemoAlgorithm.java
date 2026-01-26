@@ -54,7 +54,7 @@ public class DemoAlgorithm<T extends Chromosome> {
                 lastWasAlpha = false;
             }
 
-            s.logger.println(LogLevel.DEBUG, "Last is " + population.getLast() + " with fitness of " + population.getLast().fitness);
+//            s.logger.println(LogLevel.DEBUG, "Last is " + population.getLast() + " with fitness of " + population.getLast().fitness);
             if (alpha == null || population.getLast().fitness > alpha.fitness) { // If we got new alpha, print that.
                 alpha = population.getLast();
                 if (!lastWasAlpha) {

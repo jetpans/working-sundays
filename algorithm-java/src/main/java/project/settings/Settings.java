@@ -40,4 +40,27 @@ public abstract class Settings<T extends Chromosome> {
             return null;
         }
     }
+
+    public static Settings copyOf(Settings other) {
+        Settings copy;
+        try {
+            copy = other.getClass().getDeclaredConstructor().newInstance();
+            copy.name = other.name;
+            copy.populationSize = other.populationSize;
+            copy.generations = other.generations;
+            copy.newChromosomes = other.newChromosomes;
+            copy.elitism = other.elitism;
+            copy.mutator = other.mutator;
+            copy.crossover = other.crossover;
+            copy.selection = other.selection;
+            copy.fitness = other.fitness;
+            copy.generator = other.generator;
+            copy.logger = other.logger;
+            return copy;
+        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException |
+                 InvocationTargetException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to copy Settings instance.", e);
+        }
+    }
 }

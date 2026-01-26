@@ -4,14 +4,19 @@ import project.genetic.chromosome.MatrixChromosome;
 import project.models.Global;
 import project.models.Problem;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public class RandomGenerator implements Generator<MatrixChromosome> {
+public class RandomGenerator extends ForStoresGenerator {
 
-    List<String> storeIds;
 
     public RandomGenerator(List<String> storeIds) {
-        this.storeIds = storeIds;
+        super(storeIds);
+    }
+
+    @Override
+    public ForStoresGenerator copyOf() {
+        return new RandomGenerator(new ArrayList<>(this.storeIds));
     }
 
     @Override

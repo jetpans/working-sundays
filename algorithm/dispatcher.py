@@ -1,6 +1,5 @@
 from algorithm.algorithms import optimize_cluster
-from tools.generate_clusters import make_clusters
-from constants import MAX_RADIUS_OF_INFLUENCE
+from tools.zdeprecated_generate_clusters import make_clusters
 from util import load_json, store_json, individual_to_json, haversine
 from algorithm.models import FastIntersectUnionFitness, CrossoverGeometric, MutatorSimple, create_individual_based_on_others_heuristic1, CrossoverColumnGeometric, create_individual_random
 import datetime
@@ -17,7 +16,7 @@ if __name__ == "__main__":
     data = load_json("data/one_cluster_subset.json")
     JOIN_CLUSTER_AMOUNT = 3
     GENERATION_PLAN = [500, 30, 10] + [2]*20
-    clusters = make_clusters(data, max_in_cluster=10, max_distance=MAX_RADIUS_OF_INFLUENCE)
+    clusters = make_clusters(data, max_in_cluster=10, max_distance=5)
 
     ctr = 0
     current_individuals = [None] * len(clusters)
@@ -81,7 +80,7 @@ if __name__ == "__main__":
                 distances.append((other, mindist))
             distances.sort(key=lambda x: x[1])
             distances = distances[:min(JOIN_CLUSTER_AMOUNT, len(distances))]
-            if distances[1][1] > MAX_RADIUS_OF_INFLUENCE:
+            if distances[1][1] > 5:
                 clust = distances[0][0]
                 clusters_copy.remove(clust)
                 for ind in future_individuals:

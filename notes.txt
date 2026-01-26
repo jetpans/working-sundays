@@ -1,0 +1,7 @@
+TODO: 
+Make output directory choice in java algorithm.
+Make better file handling within solver and solution shower
+Make better flow between algorithm and solution shower
+
+Make script that checks sunday by sunday improvement for each store.
+Verify the results are the ones we are expecting

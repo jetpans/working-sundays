@@ -94,6 +94,8 @@ public class Problem {
                 }
             }
 
+            System.out.printf("Loaded Problem Definition: MAX_WORKS=%d, SUNDAYS=%d, Constraints for %d stores. Data for %d stores %n",
+                    maxWorks, totalSundays, parsedConstraints.size(), d.storeDataMap.size());
             // 5. Create the singleton instance
             // Note: maxWorks maps to 'workingSundays' in the constructor based on context
             instance = new Problem(maxWorks, totalSundays, parsedConstraints, d);

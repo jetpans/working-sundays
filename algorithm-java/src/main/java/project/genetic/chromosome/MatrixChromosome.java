@@ -1,9 +1,15 @@
 package project.genetic.chromosome;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import org.ejml.simple.SimpleMatrix;
 import project.models.Constraints;
 import project.models.Problem;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,11 +49,23 @@ public class MatrixChromosome extends Chromosome {
 
     public MatrixChromosome(MatrixChromosome that) {
         super(that);
+
+
         this.works = that.works;
-        this.model = List.copyOf(that.model);
-        this.antiModel = List.copyOf(that.antiModel);
-        this.worksMatrix = that.worksMatrix.copy();
+
         this.constraints = that.constraints;
+
+        this.worksMatrix = that.worksMatrix.copy();
+
+        this.model = new ArrayList<>(that.model.size());
+        for (List<Integer> row : that.model) {
+            this.model.add(new ArrayList<>(row));
+        }
+
+        this.antiModel = new ArrayList<>(that.antiModel.size());
+        for (List<Integer> row : that.antiModel) {
+            this.antiModel.add(new ArrayList<>(row));
+        }
     }
 
     public SimpleMatrix getWorksMatrix() {
@@ -88,13 +106,13 @@ public class MatrixChromosome extends Chromosome {
     public void fromAntiModelToModel(int storeIndex, int index) {
         Integer s = this.antiModel.get(storeIndex).remove(index);
         this.model.get(storeIndex).add(s);
-        this.worksMatrix.set(storeIndex, s, Problem.getInstance().data.storeDataMap.get(super.storeIds.get(storeIndex)).metric);
+        this.worksMatrix.set(storeIndex, s, Problem.getInstance().data.storeDataMap.get(super.storeIds.get(storeIndex)).radius);
     }
 
     public void moveToModel(int storeIndex, int sunday) {
         this.antiModel.get(storeIndex).remove((Integer) sunday);
         this.model.get(storeIndex).add(sunday);
-        this.worksMatrix.set(storeIndex, sunday, Problem.getInstance().data.storeDataMap.get(super.storeIds.get(storeIndex)).metric);
+        this.worksMatrix.set(storeIndex, sunday, Problem.getInstance().data.storeDataMap.get(super.storeIds.get(storeIndex)).radius);
     }
 
     public void removeFromModel(int storeIndex, int sunday) {
@@ -118,10 +136,42 @@ public class MatrixChromosome extends Chromosome {
             }
             if (newModel.contains(i)) {
                 this.model.get(storeIndex).add(i);
-                this.worksMatrix.set(storeIndex, i, Problem.getInstance().data.storeDataMap.get(super.storeIds.get(storeIndex)).metric);
+                this.worksMatrix.set(storeIndex, i, Problem.getInstance().data.storeDataMap.get(super.storeIds.get(storeIndex)).radius);
             } else if (!c.free.contains(i)) {
                 this.antiModel.get(storeIndex).add(i);
             }
+        }
+    }
+
+    public static void toFile(MatrixChromosome chromosome, String filename) {
+        JsonObject root = new JsonObject();
+
+        // Iterate through all stores
+        // We assume storeIds, works, and model are all aligned by index
+        for (int i = 0; i < chromosome.storeIds.size(); i++) {
+            String storeId = chromosome.storeIds.get(i);
+            JsonArray sundays = new JsonArray();
+
+            // 1. Add Fixed Works (from Constraints)
+            for (Integer sunday : chromosome.works.get(i)) {
+                sundays.add(sunday);
+            }
+
+            // 2. Add Variable Works (from Model)
+            for (Integer sunday : chromosome.model.get(i)) {
+                sundays.add(sunday);
+            }
+
+            root.add(storeId, sundays);
+        }
+
+        // Write to file with Pretty Printing
+        try (FileWriter writer = new FileWriter(filename)) {
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            gson.toJson(root, writer);
+        } catch (IOException e) {
+            System.err.println("Error saving chromosome to file: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

@@ -16,7 +16,7 @@ public class SinglePointCrossover implements Crossover<MatrixChromosome> {
     @Override
     public List<MatrixChromosome> crossover(MatrixChromosome parent1, MatrixChromosome parent2) {
         if (Global.RANDOM.nextDouble() > p) {
-            return List.of(parent1, parent2);
+            return List.of(new MatrixChromosome(parent1), new MatrixChromosome(parent1));
         }
 
         MatrixChromosome child1 = new MatrixChromosome(parent1);

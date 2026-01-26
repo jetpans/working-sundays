@@ -6,7 +6,7 @@ import project.models.Global;
 import java.util.List;
 
 public class CompositeGenerator<T extends Chromosome> implements Generator<T> {
-    private final List<Generator<T>> generators;
+    public final List<Generator<T>> generators;
     private final double[] weights;
 
     public CompositeGenerator(List<Generator<T>> generators, double[] weights) {

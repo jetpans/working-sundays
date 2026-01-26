@@ -6,7 +6,6 @@ from math import radians, sin, cos, sqrt, atan2
 import numpy as np
 from shapely.geometry import box
 from shapely.ops import unary_union
-from constants import MAX_RADIUS_OF_INFLUENCE
 
 
 def load_json(file_path):
@@ -78,28 +77,7 @@ def generate_n_colors(n):
         return base_colors[:n]
 
 
-def radius_of_influence(store_id, cluster, data):
-    """Calculate the radius of influence for a store based on its reviews."""
-    # Get the coordinates of the store
-    total_population = data[store_id]["user_ratings_total"]
-    my_population = data[store_id]["user_ratings_total"]
-    for other_id in cluster:
-        if other_id == store_id:
-            continue
-        total_population += data[other_id]["user_ratings_total"]
 
-    return sqrt(my_population / total_population) * MAX_RADIUS_OF_INFLUENCE  # kilometers
-
-
-def radius_of_influence_from_solution(store_id, cluster, data, solution, sunday):
-    total_population = 1e-10
-    my_population = 0
-    for other_id in cluster:
-        if sunday in solution[other_id]:
-            total_population += data[other_id]["user_ratings_total"]
-            if store_id == other_id:
-                my_population = data[other_id]["user_ratings_total"]
-    return sqrt(my_population / total_population) * MAX_RADIUS_OF_INFLUENCE  # kilometers
 
 
 def haversine(lat1, lon1, lat2, lon2):

@@ -1,5 +1,5 @@
 import folium
-from util import load_json, store_json, radius_of_influence
+from util import load_json, store_json
 from geopy.distance import distance
 import sys
 # Outfilename from args
@@ -71,7 +71,7 @@ for store_id, store_info in data.items():
 
         # Calculate and add the influence area polygon to the polygon group
         lat, lon = coordinates[1], coordinates[0]
-        half_side_m = radius_of_influence(store_id, clustering[class_id], data) * 1000 / 2  # Convert km to m
+        half_side_m = data[store_id].get("radius_km", "-100") * 1000 / 2  # Convert km to m
 
         north = distance(meters=half_side_m).destination((lat, lon), 0)
         east = distance(meters=half_side_m).destination((lat, lon), 90)

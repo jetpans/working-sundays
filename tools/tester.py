@@ -1,6 +1,5 @@
 from algorithm.algorithms import optimize_cluster
-from tools.generate_clusters import make_clusters
-from constants import MAX_RADIUS_OF_INFLUENCE
+from tools.zdeprecated_generate_clusters import make_clusters
 from util import load_json, store_json, individual_to_json, haversine
 from algorithm.models import FastIntersectUnionFitness
 import datetime

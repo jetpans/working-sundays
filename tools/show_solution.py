@@ -1,17 +1,32 @@
 import folium
 from folium.plugins import Fullscreen
-from util import load_json, store_json, radius_of_influence_from_solution
+from util import load_json, store_json
 from geopy.distance import distance
 import json
 import sys
+if len(sys.argv) != 4:
+    print("Usage: python show_solution.py <instance_folder> <input_solution.json> <output_map_name>")
+    sys.exit(1)
+INSTANCE_FOLDER = sys.argv[1]
 
-CLUSTERING = sys.argv[1]
+CLUSTERING = f"{INSTANCE_FOLDER}/clustering.json"
+DATA = f"{INSTANCE_FOLDER}/data.json"
+CONSTRAINTS = f"{INSTANCE_FOLDER}/constraints.json"
+
+
+
+
+# CLUSTERING = sys.argv[1]
 INFILE = sys.argv[2]
 OUTFILE = sys.argv[3]
 # Load data
-data = load_json("data/rawdata.json")
+data = load_json(DATA)
 clustering = load_json(CLUSTERING)
 solution = load_json(INFILE)
+constraints = load_json(CONSTRAINTS)
+WORKING_SUNDAYS = constraints["MAX_WORKS"]
+TOTAL_SUNDAYS = constraints["SUNDAYS"]
+
 l = list(data.keys())[::]
 for key in l:
     if key not in solution:
@@ -49,7 +64,7 @@ Fullscreen().add_to(m)
 
 # Create a feature group for each Sunday (only one will be visible at a time)
 sunday_groups = []
-for sunday in range(55):
+for sunday in range(TOTAL_SUNDAYS):
     sunday_group = folium.FeatureGroup(name=f"Sunday {sunday+1}", show=False)
     sunday_groups.append(sunday_group)
 
@@ -77,7 +92,7 @@ for store_id, store_info in data.items():
         ).add_to(m)
 
 # Add influence areas for each Sunday
-for sunday in range(55):
+for sunday in range(TOTAL_SUNDAYS):
     # For each store in the solution for this Sunday
     for store_id, sundays_list in solution.items():
         # Skip if store not in data
@@ -105,7 +120,7 @@ for sunday in range(55):
                 continue
 
             # Calculate radius of influence using the new function
-            radius_km = radius_of_influence_from_solution(store_id, cluster, data, solution, sunday)
+            radius_km = data[store_id].get('radius_km', -2)  # Default to 1 km if not specified
             radius_m = radius_km * 1000  # Convert to meters
 
             # Get coordinates
@@ -210,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     selector.style.borderRadius = '3px';
                     selector.style.border = '1px solid #ccc';
                     
-                    for (var i = 1; i <= 55; i++) {
+                    for (var i = 1; i <= $$$S$$$; i++) {
                         var option = L.DomUtil.create('option', '', selector);
                         option.value = i - 1;  // 0-based index
                         option.text = 'Sunday ' + i;
@@ -281,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 1000); // Wait for map to initialize
 });
 </script>
-"""
+""".replace("$$$S$$$", str(TOTAL_SUNDAYS))
 
 m.get_root().html.add_child(folium.Element(sunday_selector_js))
 
