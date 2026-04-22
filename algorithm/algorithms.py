@@ -87,9 +87,9 @@ def main():
 
 
 def test():
-    clusters = load_json("data/one_cluster_cluster.json")
-    constraints = load_json("data/constraints.json")
-    data = load_json("data/sample_profit.json")
+    clusters = load_json("data/small_instance/clustering.json")
+    constraints = load_json("data/small_instance/constraints.json")
+    data = load_json("data/small_instance/data.json")
 
     cluster = clusters[0]
 
@@ -97,7 +97,7 @@ def test():
     f_fitness = FastIntersectUnionFitness(cluster, constraints, data)
     rnd_ind = create_individual_heuristic1(cluster, constraints, data)
 
-    solution_matrix = np.array(rnd_ind.model)
+    solution_matrix = np.array(rnd_ind.big_matrix)
 
     data_per_sunday = []
     data_per_sunday1 = []

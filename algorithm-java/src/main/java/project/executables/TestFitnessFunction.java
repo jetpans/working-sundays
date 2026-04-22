@@ -17,7 +17,7 @@ public class TestFitnessFunction {
 
 
     public static void main(String[] args) {
-        int NO_CHROMOSOMES = 100;
+        int NO_CHROMOSOMES = 1000;
 
         String instanceFolder = args[0];
         String dataPath = instanceFolder + "/data.json";
@@ -47,11 +47,16 @@ public class TestFitnessFunction {
         System.out.println("FastIntersectUnionFitness time for " + NO_CHROMOSOMES + " chromosomes: " + time2 + " ms");
 
         List<Double> abosoluteDiffs = new ArrayList<>();
+        double maxDiff = 0.0;
         for (int i = 0; i < chromosomes.size(); i++) {
             double diff = Math.abs(scores1.get(i) - scores2.get(i));
             abosoluteDiffs.add(diff);
+            if (diff > maxDiff) {
+                maxDiff = diff;
+            }
         }
         double averageAbsoluteError = abosoluteDiffs.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
         System.out.println("Average absolute error: " + averageAbsoluteError);
+        System.out.println("Maximum absolute error: " + maxDiff);
     }
 }

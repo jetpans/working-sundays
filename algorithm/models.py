@@ -3,7 +3,6 @@ from deap import base, creator, tools
 import numpy as np
 from shapely.geometry import box
 from util import create_box, union_intersect, fast_create_boxes, fast_union_intersect, haversine
-from constants import MAX_RADIUS_OF_INFLUENCE
 
 
 class MyIndividual:
@@ -48,10 +47,10 @@ def create_individual_random(cluster, constraints, data):
             ind.model[index].append(elem)
             ind.antimodel[index].pop(rnd)
 
-            ind.big_matrix[index][elem] = ind.data[id_]["user_ratings_total"]  # Put model entries in the big matrix
+            ind.big_matrix[index][elem] = ind.data[id_]["radius_km"]  # Put model entries in the big matrix
 
         for w in ind.works[index]:
-            ind.big_matrix[index][w] = ind.data[id_]["user_ratings_total"]  # Put works entries in the big matrix
+            ind.big_matrix[index][w] = ind.data[id_]["radius_km"]  # Put works entries in the big matrix
     return ind
 
 
@@ -71,7 +70,7 @@ def create_individual_heuristic1(cluster, constraints, data):
             if sunday in ind.antimodel[index] and len(ind.model[index]) + len(ind.works[index]) < constraints["MAX_WORKS"]:
                 ind.model[index].append(sunday)
                 ind.antimodel[index].remove(sunday)
-                ind.big_matrix[index][sunday] = data[id_]["user_ratings_total"]
+                ind.big_matrix[index][sunday] = data[id_]["radius_km"]
                 break
 
     for index, id_ in enumerate(cluster):
@@ -81,10 +80,10 @@ def create_individual_heuristic1(cluster, constraints, data):
             ind.model[index].append(elem)
             ind.antimodel[index].pop(rnd)
 
-            ind.big_matrix[index][elem] = ind.data[id_]["user_ratings_total"]  # Put model entries in the big matrix
+            ind.big_matrix[index][elem] = ind.data[id_]["radius_km"]  # Put model entries in the big matrix
 
         for w in ind.works[index]:
-            ind.big_matrix[index][w] = ind.data[id_]["user_ratings_total"]  # Put works entries in the big matrix
+            ind.big_matrix[index][w] = ind.data[id_]["radius_km"]  # Put works entries in the big matrix
     return ind
 
 
@@ -105,7 +104,7 @@ def create_individual_based_on_others_heuristic1(cluster, constraints, data, ind
                 if sunday in ind.antimodel[index] and len(ind.model[index]) + len(ind.works[index]) < constraints["MAX_WORKS"]:
                     ind.model[index].append(sunday)
                     ind.antimodel[index].remove(sunday)
-                    ind.big_matrix[index][sunday] = data[id_]["user_ratings_total"]
+                    ind.big_matrix[index][sunday] = data[id_]["radius_km"]
                     break
 
         for index, id_ in enumerate(cluster):
@@ -115,10 +114,10 @@ def create_individual_based_on_others_heuristic1(cluster, constraints, data, ind
                 ind.model[index].append(elem)
                 ind.antimodel[index].pop(rnd)
 
-                ind.big_matrix[index][elem] = ind.data[id_]["user_ratings_total"]  # Put model entries in the big matrix
+                ind.big_matrix[index][elem] = ind.data[id_]["radius_km"]  # Put model entries in the big matrix
 
             for w in ind.works[index]:
-                ind.big_matrix[index][w] = ind.data[id_]["user_ratings_total"]  # Put works entries in the big matrix
+                ind.big_matrix[index][w] = ind.data[id_]["radius_km"]  # Put works entries in the big matrix
         return ind
     else:
         new_ind = MyIndividual(cluster, constraints, data)
@@ -157,7 +156,7 @@ def mutate_individual_simple(individual, prob, count):
 
                 individual.big_matrix[index][other_elem] = individual.data[individual.cluster[index]
                                                                            # Put new entry in big matrix
-                                                                           ]["user_ratings_total"]
+                                                                           ]["radius_km"]
 
 
 def crossover_individuals_kswitch(ind1, ind2, k):
@@ -211,7 +210,7 @@ def crossover_individuals_columns_kswitch(ind1, ind2, k):
             c1.antimodel[shop].append(sunday)
             c2.antimodel[shop].remove(sunday)
             c1.big_matrix[shop][sunday] = 0  # Remove from big matrix
-            c2.big_matrix[shop][sunday] = c1.data[c1.cluster[shop]]["user_ratings_total"]  # Put new entry in big matrix
+            c2.big_matrix[shop][sunday] = c1.data[c1.cluster[shop]]["radius_km"]  # Put new entry in big matrix
 
             # Fix them, c2 has one too many, c1 has one too few
             removec2 = c2.model[shop].pop(random.randint(0, len(c2.model[shop]) - 1))
@@ -219,7 +218,7 @@ def crossover_individuals_columns_kswitch(ind1, ind2, k):
             c1.model[shop].append(addtoc1)
             c2.antimodel[shop].append(removec2)
             c1.big_matrix[shop][addtoc1] = c1.data[c1.cluster[shop]
-                                                   ]["user_ratings_total"]  # Put new entry in big matrix
+                                                   ]["radius_km"]  # Put new entry in big matrix
             c2.big_matrix[shop][removec2] = 0  # Remove from big matrix
 
     for index in range(len(c1.model)):
@@ -248,7 +247,7 @@ class IntersectUnionFitness(Fitness):
         sums = individual.big_matrix.sum(axis=0, keepdims=True)
         sums[sums == 0] = 1
         solution_matrix = individual.big_matrix / sums
-        solution_matrix = np.sqrt(solution_matrix) * MAX_RADIUS_OF_INFLUENCE
+        solution_matrix = individual.big_matrix[::]
 
         data_per_sunday = []
 
@@ -271,9 +270,7 @@ class FastIntersectUnionFitness(Fitness):
     def __call__(self, individual):
         sums = individual.big_matrix.sum(axis=0, keepdims=True)
         sums[sums == 0] = 1
-        solution_matrix = individual.big_matrix / sums
-        solution_matrix = np.sqrt(solution_matrix) * MAX_RADIUS_OF_INFLUENCE
-
+        solution_matrix = individual.big_matrix[::]
         data_per_sunday = []
 
         for sunday in range(individual.constraints["SUNDAYS"]):

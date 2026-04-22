@@ -286,5 +286,5 @@ def load_individual_from_json(file_path):
         new_ind.big_matrix = np.zeros((len(cluster), constraints["SUNDAYS"]))
         for index, row in enumerate(works):
             for item in row:
-                new_ind.big_matrix[index][item] = data[cluster[index]]["user_ratings_total"]
+                new_ind.big_matrix[index][item] = data[cluster[index]]["radius_km"]
     return new_ind
