@@ -12,7 +12,7 @@
 3. User configures the job via a tabbed wizard:
    - **Stores tab** (primary): Upload store data (JSON), optional clustering, define global constraints (YEAR, SUNDAYS, MAX_WORKS, MAX_DOESNT_WORK), set radius value formula and radius settings, edit per-store Sunday constraints.
    - **Settings tab**: Configure general settings (cluster distances) and genetic algorithm parameters (operators, populations, threads).
-   - **Run tab** (stub): Execute optimization and stream logs.
+   - **Run tab**: Execute optimization, stream logs over websocket, allow termination.
    - **Results tab** (stub): Display optimization results and metrics.
 4. Job data is saved to backend job directory.
 5. Backend coordinates with Java algorithm backend for optimization.
@@ -28,6 +28,7 @@
 - **UI Notifications**: Sonner (toast library)
 - **State Management**: React Context API (AppContext for global `server` and `username`)
 - **File I/O**: Job data stored as JSON in backend `RUNS_DIR/<username>/<jobid>/`
+ - **File I/O**: Job data stored as JSON in backend `RUNS_DIR/<username>/<jobid>/` with results in `RUNS_DIR/<username>/<jobid>/results/`
 
 ---
 
@@ -83,7 +84,8 @@
     - `GET /api/jobs/<username>` → list job IDs
     - `GET /api/job/<username>/<jobid>` → fetch job info including data.json and constraints.json content if present
     - `DELETE /api/job/<username>/<jobid>` → delete job directory
-    - POST `/api/job/<username>/<jobid>/run` (stub)
+      - POST `/api/job/<username>/<jobid>/run` → start Java run, stream logs via websocket
+      - POST `/api/job/<username>/<jobid>/terminate` → terminate active run
 
 ### Data & Config Files
 
@@ -107,7 +109,7 @@
 
 2. **Job data** (Server-side state):
    - Always stored in backend job directory: `RUNS_DIR/<username>/<jobid>/`
-   - Files: `descriptor.job`, `data.json`, `constraints.json`, `calc.py` (embedded in descriptor), optional `clustering.json`.
+   - Files: `descriptor.job`, `data.json`, `constraints.json`, `calc.py` (embedded in descriptor), optional `clustering.json`, `results/`.
    - Frontend fetches entire job info on page load and preloads StoresTab.
 
 3. **Job wizard** (Frontend form state):
@@ -251,8 +253,15 @@
 5. **Validation gaps**: Always validate user input before posting to backend. Provide clear error messages.
 6. **Async state bugs**: Initialize state with callbacks (`useState(() => ...)`) when deriving from props. Use `useEffect` to sync prop changes to state.
 7. **Broken dependencies**: Always add new npm packages to `package.json`. Run `npm install` after changes.
+8. **Run status drift**: When starting/terminating a job, update `descriptor.job.run_info` and keep Run tab polling it.
 
 ---
+
+## Run Tab Execution Notes
+
+- The API launches the Java run with `JAVA_BIN` and `JAVA_JAR` and streams stdout/stderr over Socket.IO.
+- One job corresponds to one run; new runs override the existing `results/` folder.
+- Run status is stored in `descriptor.job.run_info` and surfaced on the Run tab.
 
 ## Cross-Stack Change Workflow (Settings + GA Operators)
 

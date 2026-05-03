@@ -117,7 +117,22 @@ class JobCreationHelper:
 
     def load_constraints(self, username: str, job_id: str, constraints: Dict) -> Dict:
         job_dir = self._ensure_job_dir(username, job_id)
-        self._write_json(job_dir / "constraints.json", constraints)
+        normalized_constraints = dict(constraints)
+
+        data_path = job_dir / "data.json"
+        if data_path.exists():
+            stores = self._read_json(data_path)
+            for store_id in stores.keys():
+                store_constraints = normalized_constraints.get(store_id)
+                if not isinstance(store_constraints, dict):
+                    normalized_constraints[store_id] = {"works": [], "doesnt_work": []}
+                    continue
+
+                store_constraints.setdefault("works", [])
+                store_constraints.setdefault("doesnt_work", [])
+                normalized_constraints[store_id] = store_constraints
+
+        self._write_json(job_dir / "constraints.json", normalized_constraints)
         return {"ok": True}
 
     def load_settings(self, username: str, job_id: str, settings: Dict) -> Dict:
@@ -225,6 +240,10 @@ class JobCreationHelper:
         self._write_json(data_path, stores)
 
         descriptor["status"] = "ready"
+        descriptor["run_info"] = {
+            "status": "Ready",
+            "updated_at": self._utc_now(),
+        }
         self._write_json(job_dir / "descriptor.job", descriptor)
 
         return {"ok": True, "descriptor": descriptor}

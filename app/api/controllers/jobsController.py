@@ -1,7 +1,14 @@
 from pathlib import Path
+from datetime import datetime, timezone
 import json
 import shutil
+import subprocess
+import threading
+from typing import Dict, Optional
+
+import psutil
 from flask import request
+from flask_socketio import join_room
 
 from config import AppConfig
 from controllers.jobCreationController import jobCreationService
@@ -15,9 +22,12 @@ class JobsController:
     - Run a job
     """
     
-    def __init__(self, app):
+    def __init__(self, app, socketio):
         self.app = app
+        self.socketio = socketio
+        self._runs: Dict[str, Dict] = {}
         self.register_routes()
+        self.register_socket_events()
 
     def register_routes(self):
         @self.app.get("/api/jobs/<username>")
@@ -47,6 +57,8 @@ class JobsController:
                 job_dir = AppConfig.RUNS_DIR / username / jobid
                 
                 # Build comprehensive job info
+                run_info = descriptor.get("run_info") or {}
+
                 job_info = {
                     "descriptor": descriptor,
                     "files": {
@@ -56,8 +68,9 @@ class JobsController:
                         "has_value_calculator": descriptor.get("value_calculator") is not None,
                     },
                     "run_info": {
-                        "status": descriptor.get("status", "unknown"),
+                        "status": run_info.get("status", "Uninitialized"),
                         "created_at": descriptor.get("created_at"),
+                        "updated_at": run_info.get("updated_at"),
                     }
                 }
 
@@ -89,9 +102,106 @@ class JobsController:
         def run_job(username: str, jobid: str):
             """
             Run the job using the Java algorithm with appropriate settings.
-            Placeholder for actual job execution logic.
+            Starts a background process and streams logs over websocket.
             """
-            raise NotImplementedError("Job execution not yet implemented - awaiting Java integration")
+            key = f"{username}:{jobid}"
+            if key in self._runs and self._runs[key].get("process") is not None:
+                return {"success": False, "error": "job already running"}, 409
+
+            job_dir = AppConfig.RUNS_DIR / username / jobid
+            if not job_dir.exists():
+                return {"success": False, "error": "job not found"}, 404
+
+            if not AppConfig.JAVA_JAR:
+                return {"success": False, "error": "JAVA_JAR not configured"}, 500
+
+            results_dir = job_dir / "results"
+            if results_dir.exists():
+                shutil.rmtree(results_dir)
+            results_dir.mkdir(parents=True, exist_ok=True)
+
+            descriptor_path = job_dir / "descriptor.job"
+            try:
+                descriptor = jobCreationService._read_descriptor(job_dir)
+                descriptor["run_info"] = {
+                    "status": "Running",
+                    "updated_at": self._utc_now(),
+                }
+                jobCreationService._write_json(descriptor_path, descriptor)
+            except Exception as e:
+                return {"success": False, "error": str(e)}, 500
+
+            instance_folder = str(job_dir)
+            command = [AppConfig.JAVA_BIN, "-jar", AppConfig.JAVA_JAR, instance_folder]
+
+            def run_worker():
+                proc: Optional[subprocess.Popen[str]] = None
+                try:
+                    proc = subprocess.Popen(
+                        command,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        bufsize=1,
+                        universal_newlines=True,
+                    )
+                    self._runs[key] = {
+                        "process": proc,
+                        "thread": threading.current_thread(),
+                    }
+
+                    if proc.stdout:
+                        for line in proc.stdout:
+                            if line is None:
+                                continue
+                            self.socketio.emit(
+                                "run_log",
+                                line.rstrip("\n"),
+                                room=key,
+                            )
+
+                    exit_code = proc.wait()
+                    status = "Complete" if exit_code == 0 else "Error"
+                    self._update_run_status(job_dir, status)
+                except Exception:
+                    self._update_run_status(job_dir, "Error")
+                finally:
+                    if key in self._runs:
+                        self._runs.pop(key, None)
+
+            thread = threading.Thread(target=run_worker, daemon=True)
+            thread.start()
+
+            return {"success": True, "data": {"status": "Running"}}, 202
+
+        @self.app.post("/api/job/<username>/<jobid>/terminate")
+        def terminate_job(username: str, jobid: str):
+            key = f"{username}:{jobid}"
+            run_entry = self._runs.get(key)
+            if not run_entry or not run_entry.get("process"):
+                return {"success": False, "error": "job not running"}, 409
+
+            proc = run_entry["process"]
+            try:
+                parent = psutil.Process(proc.pid)
+                for child in parent.children(recursive=True):
+                    try:
+                        child.kill()
+                    except Exception:
+                        pass
+                parent.kill()
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+
+            job_dir = AppConfig.RUNS_DIR / username / jobid
+            self._update_run_status(job_dir, "Error")
+
+            self._runs.pop(key, None)
+
+            return {"success": True}, 200
 
         @self.app.delete("/api/job/<username>/<jobid>")
         def delete_job(username: str, jobid: str):
@@ -107,3 +217,28 @@ class JobsController:
                 return {"success": True}, 200
             except Exception as e:
                 return {"success": False, "error": str(e)}, 500
+
+    def register_socket_events(self):
+        @self.socketio.on("run_subscribe")
+        def handle_run_subscribe(payload):
+            username = payload.get("username")
+            jobid = payload.get("jobId")
+            if not username or not jobid:
+                return
+            key = f"{username}:{jobid}"
+            join_room(key)
+
+    def _update_run_status(self, job_dir: Path, status: str) -> None:
+        try:
+            descriptor = jobCreationService._read_descriptor(job_dir)
+            descriptor["run_info"] = {
+                "status": status,
+                "updated_at": self._utc_now(),
+            }
+            jobCreationService._write_json(job_dir / "descriptor.job", descriptor)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _utc_now() -> str:
+        return datetime.now(timezone.utc).isoformat()

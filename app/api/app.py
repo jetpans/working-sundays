@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from flask import Flask
+from flask_socketio import SocketIO
 from flask_cors import CORS
 
 from config import AppConfig
@@ -25,6 +26,8 @@ else:
 
 CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
 
+socketio = SocketIO(app, cors_allowed_origins=allowed_origins)
+
 
 @app.route("/")
 def home():
@@ -33,9 +36,9 @@ def home():
 
 healthController = HealthController(app)
 jobCreationController = JobCreationController(app)
-jobsController = JobsController(app)
+jobsController = JobsController(app, socketio)
 jobResultController = JobResultController(app)
 
 
 if __name__ == "__main__":
-    app.run(host=AppConfig.HOST, port=AppConfig.PORT, debug=AppConfig.DEBUG)
+    socketio.run(app, host=AppConfig.HOST, port=AppConfig.PORT, debug=AppConfig.DEBUG)
