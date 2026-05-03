@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import shutil
 from flask import request
 
 from config import AppConfig
@@ -59,6 +60,24 @@ class JobsController:
                         "created_at": descriptor.get("created_at"),
                     }
                 }
+
+                # If files exist, include their content so frontend can preload edit forms
+                data_path = job_dir / "data.json"
+                constraints_path = job_dir / "constraints.json"
+                try:
+                    if data_path.exists():
+                        job_info["data"] = jobCreationService._read_json(data_path)
+                    else:
+                        job_info["data"] = None
+
+                    if constraints_path.exists():
+                        job_info["constraints"] = jobCreationService._read_json(constraints_path)
+                    else:
+                        job_info["constraints"] = None
+                except Exception:
+                    # If reading files fails, return their existence flags but omit content
+                    job_info["data"] = None
+                    job_info["constraints"] = None
                 
                 return {"success": True, "data": job_info}, 200
             except FileNotFoundError:
@@ -73,3 +92,18 @@ class JobsController:
             Placeholder for actual job execution logic.
             """
             raise NotImplementedError("Job execution not yet implemented - awaiting Java integration")
+
+        @self.app.delete("/api/job/<username>/<jobid>")
+        def delete_job(username: str, jobid: str):
+            """
+            Delete a job directory for a given username and job ID.
+            """
+            try:
+                job_dir = AppConfig.RUNS_DIR / username / jobid
+                if not job_dir.exists():
+                    return {"success": False, "error": "job not found"}, 404
+
+                shutil.rmtree(job_dir)
+                return {"success": True}, 200
+            except Exception as e:
+                return {"success": False, "error": str(e)}, 500

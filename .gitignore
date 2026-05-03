@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+.sunday-cache/
+
 src
 backend
 # C extensions

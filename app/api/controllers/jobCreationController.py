@@ -6,11 +6,23 @@ from pathlib import Path
 import json
 import uuid
 import subprocess
+import sys
+import math
 from typing import Any, Dict
 
 from flask import request, jsonify
 
 from config import AppConfig
+
+# Ensure repo root is on sys.path for processing imports
+repo_root = str(AppConfig.REPO_ROOT)
+if repo_root not in sys.path:
+    sys.path.append(repo_root)
+
+try:
+    from processing.calculate_radiuses import process_stores
+except Exception:
+    process_stores = None
 
 
 @dataclass
@@ -57,6 +69,52 @@ class JobCreationHelper:
         self._write_json(job_dir / "data.json", stores)
         return {"ok": True}
 
+    def load_stores_with_radius(self, username: str, job_id: str, stores: Dict[str, Dict], radius_calc: str) -> Dict:
+        job_dir = self._ensure_job_dir(username, job_id)
+        if process_stores is None:
+            raise RuntimeError("radius processing module not available")
+        for sid, store in stores.items():
+            if not all(k in store for k in ("name", "brand", "formatted_address", "coordinates")):
+                raise ValueError(f"Store {sid} missing required fields")
+
+        expr = (radius_calc or "").strip()
+        if expr.startswith("return"):
+            expr = expr[len("return"):].strip()
+        if not expr:
+            raise ValueError("radius_calc required")
+
+        try:
+            compiled = compile(expr, "<radius_calc>", "eval")
+        except Exception as e:
+            raise ValueError(f"Invalid radius_calc: {str(e)}")
+
+        for sid, store in stores.items():
+            try:
+                value = eval(compiled, {"__builtins__": {}, "math": math}, {"store": store})
+                store["value_for_radius"] = float(value)
+            except Exception as e:
+                raise ValueError(f"Error evaluating radius_calc for store {sid}: {str(e)}")
+
+        descriptor = self._read_descriptor(job_dir)
+        general_settings = descriptor.get("settings", {}).get("general", {})
+
+        max_theoretical = general_settings.get("MAX_THEORETICAL_RADIUS_KM", 5.0)
+        min_radius = general_settings.get("MIN_RADIUS_KM", 0.5)
+        sensitivity = general_settings.get("COMPETITION_SENSITIVITY", 0.08)
+
+        processed = process_stores(
+            stores,
+            value_key="value_for_radius",
+            max_theoretical_radius_km=max_theoretical,
+            min_radius_km=min_radius,
+            competition_sensitivity=sensitivity,
+        )
+        self._write_json(job_dir / "data.json", processed)
+        descriptor["value_for_radius_calculator"] = radius_calc
+        self._write_json(job_dir / "descriptor.job", descriptor)
+
+        return {"ok": True, "stores": processed}
+
     def load_constraints(self, username: str, job_id: str, constraints: Dict) -> Dict:
         job_dir = self._ensure_job_dir(username, job_id)
         self._write_json(job_dir / "constraints.json", constraints)
@@ -76,6 +134,24 @@ class JobCreationHelper:
         descriptor["value_calculator"] = calc_string
         self._write_json(job_dir / "descriptor.job", descriptor)
         return {"ok": True}
+
+    def export_job(self, username: str, job_id: str) -> Dict:
+        job_dir = self._ensure_job_dir(username, job_id)
+        descriptor = self._read_descriptor(job_dir)
+
+        data_path = job_dir / "data.json"
+        constraints_path = job_dir / "constraints.json"
+        clustering_path = job_dir / "clustering.json"
+
+        if data_path.exists():
+            descriptor["data"] = self._read_json(data_path)
+        if constraints_path.exists():
+            descriptor["constraints"] = self._read_json(constraints_path)
+        if clustering_path.exists():
+            descriptor["clustering"] = self._read_json(clustering_path)
+
+        self._write_json(job_dir / "descriptor.job", descriptor)
+        return {"ok": True, "descriptor": descriptor}
 
     def job_init_finish(self, username: str, job_id: str) -> Dict:
         job_dir = self._ensure_job_dir(username, job_id)
@@ -222,6 +298,25 @@ class JobCreationController:
             except ValueError as e:
                 return {"success": False, "error": str(e)}, 400
 
+        @self.app.post("/api/job/<username>/<jobid>/stores-with-radius")
+        def load_stores_with_radius(username: str, jobid: str):
+            body = request.get_json(silent=True) or {}
+            stores = body.get("stores")
+            radius_calc = body.get("radius_calc")
+            if not isinstance(stores, dict):
+                return {"success": False, "error": "stores must be an object mapping ids to store objects"}, 400
+            if not isinstance(radius_calc, str) or not radius_calc.strip():
+                return {"success": False, "error": "radius_calc must be a non-empty string"}, 400
+            try:
+                jobCreationService.load_stores_with_radius(username, jobid, stores, radius_calc)
+                return {"success": True}
+            except FileNotFoundError:
+                return {"success": False, "error": "job not found"}, 404
+            except ValueError as e:
+                return {"success": False, "error": str(e)}, 400
+            except Exception as e:
+                return {"success": False, "error": str(e)}, 500
+
         @self.app.post("/api/job/<username>/<jobid>/constraints")
         def load_constraints(username: str, jobid: str):
             body = request.get_json(silent=True) or {}
@@ -257,6 +352,16 @@ class JobCreationController:
                 return {"success": True}
             except FileNotFoundError:
                 return {"success": False, "error": "job not found"}, 404
+
+        @self.app.post("/api/job/<username>/<jobid>/export")
+        def export_job(username: str, jobid: str):
+            try:
+                result = jobCreationService.export_job(username, jobid)
+                return {"success": True, "data": result.get("descriptor")}, 200
+            except FileNotFoundError:
+                return {"success": False, "error": "job not found"}, 404
+            except Exception as e:
+                return {"success": False, "error": str(e)}, 500
 
         @self.app.post("/api/job/<username>/<jobid>/finish")
         def job_init_finish(username: str, jobid: str):
