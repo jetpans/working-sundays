@@ -186,6 +186,8 @@ cython_debug/
 
 results/
 data/
+app/api/jobs/
+app/api/auth/
 **.zip
 **.xlsx
 myenv.py

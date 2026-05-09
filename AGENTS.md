@@ -162,6 +162,20 @@
 
 ## Agent Instructions & Best Practices
 
+### Project Preferences (Mandatory)
+
+1. **Readable code first**.
+   - Prefer clear, concise implementation over clever shortcuts.
+   - Keep functions focused and names explicit.
+
+2. **Ask for clarification when requirements are ambiguous**.
+   - If behavior is unclear or there are multiple valid interpretations, ask before implementing.
+   - Confirm assumptions explicitly when needed.
+
+3. **Never assume hidden requirements**.
+   - Implement only agreed behavior.
+   - Surface tradeoffs and edge cases instead of guessing product decisions.
+
 ### Before Making Changes
 
 1. **Always read the relevant file first** before editing.

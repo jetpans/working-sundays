@@ -16,10 +16,17 @@ class AppConfig:
     DEBUG = os.getenv("DEBUG", "true").lower() == "true"
 
     WORKSPACE_ROOT = Path(os.getenv("WORKSPACE_ROOT", str(REPO_ROOT))).resolve()
-    RUNS_DIR = Path(os.getenv("RUNS_DIR", str(APP_DIR / "runs"))).resolve()
+    RUNS_DIR = Path(os.getenv("RUNS_DIR", str(APP_DIR / "jobs"))).resolve()
+    LEGACY_RUNS_DIR = Path(os.getenv("LEGACY_RUNS_DIR", str(APP_DIR / "runs"))).resolve()
+    AUTH_DIR = Path(os.getenv("AUTH_DIR", str(APP_DIR / "auth"))).resolve()
+    AUTH_USERS_FILE = Path(os.getenv("AUTH_USERS_FILE", str(AUTH_DIR / "users.json"))).resolve()
+    AUTH_JWT_SECRET_FILE = Path(
+        os.getenv("AUTH_JWT_SECRET_FILE", str(AUTH_DIR / ".jwt_secret"))
+    ).resolve()
 
     JAVA_BIN = os.getenv("JAVA_BIN", "java")
     JAVA_JAR = os.getenv("JAVA_JAR", "")
     PYTHON_BIN = os.getenv("PYTHON_BIN", "python")
+    JWT_ACCESS_TOKEN_EXPIRES_HOURS = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_HOURS", "12"))
 
     METRICS_SAMPLE_SECONDS = float(os.getenv("METRICS_SAMPLE_SECONDS", "1.0"))

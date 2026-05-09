@@ -1,4 +1,5 @@
 from flask import request
+from security import api_user_required
 
 
 class JobResultController:
@@ -13,33 +14,21 @@ class JobResultController:
 
     def register_routes(self):
         @self.app.get("/api/job/<username>/<jobid>/result")
+        @api_user_required()
         def get_job_result(username: str, jobid: str):
-            """
-            Get the final result/solution from a completed job.
-            Placeholder for result retrieval logic.
-            """
             raise NotImplementedError("Job result retrieval not yet implemented")
 
         @self.app.get("/api/job/<username>/<jobid>/metrics")
+        @api_user_required()
         def get_job_metrics(username: str, jobid: str):
-            """
-            Get execution metrics (runtime, CPU, memory usage, etc.) for a job.
-            Placeholder for metrics retrieval logic.
-            """
             raise NotImplementedError("Job metrics retrieval not yet implemented")
 
         @self.app.get("/api/job/<username>/<jobid>/visualization")
+        @api_user_required()
         def get_job_visualization(username: str, jobid: str):
-            """
-            Get visualization data (HTML map, solution visualization, etc.) for a job.
-            Placeholder for visualization generation logic.
-            """
-            raise NotImplementedError("Job visualization generation not yet implemented")
+            raise NotImplementedError("Job visualization not yet implemented")
 
         @self.app.get("/api/job/<username>/<jobid>/logs")
+        @api_user_required()
         def get_job_logs(username: str, jobid: str):
-            """
-            Get execution logs (stdout/stderr) from a job.
-            Placeholder for log retrieval logic.
-            """
             raise NotImplementedError("Job logs retrieval not yet implemented")

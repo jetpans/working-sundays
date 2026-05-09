@@ -11,8 +11,10 @@ import math
 from typing import Any, Dict
 
 from flask import request, jsonify
+from flask_jwt_extended import get_jwt_identity
 
 from config import AppConfig
+from security import api_user_required
 
 # Ensure repo root is on sys.path for processing imports
 repo_root = str(AppConfig.REPO_ROOT)
@@ -39,6 +41,7 @@ class JobCreationHelper:
     def __init__(self) -> None:
         self.base = AppConfig.RUNS_DIR
         self.base.mkdir(parents=True, exist_ok=True)
+        AppConfig.LEGACY_RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
     def create_job(self, username: str, initial_descriptor: Dict | None = None) -> Dict:
         job_id = str(uuid.uuid4())
@@ -154,19 +157,18 @@ class JobCreationHelper:
         job_dir = self._ensure_job_dir(username, job_id)
         descriptor = self._read_descriptor(job_dir)
 
+        export_payload = dict(descriptor)
+
         data_path = job_dir / "data.json"
         constraints_path = job_dir / "constraints.json"
-        clustering_path = job_dir / "clustering.json"
-
         if data_path.exists():
-            descriptor["data"] = self._read_json(data_path)
+            export_payload["data"] = self._read_json(data_path)
         if constraints_path.exists():
-            descriptor["constraints"] = self._read_json(constraints_path)
-        if clustering_path.exists():
-            descriptor["clustering"] = self._read_json(clustering_path)
+            export_payload["constraints"] = self._read_json(constraints_path)
 
-        self._write_json(job_dir / "descriptor.job", descriptor)
-        return {"ok": True, "descriptor": descriptor}
+        # Export payload includes all data needed to reconstruct a job,
+        # while intentionally excluding run results.
+        return {"ok": True, "descriptor": export_payload}
 
     def job_init_finish(self, username: str, job_id: str) -> Dict:
         job_dir = self._ensure_job_dir(username, job_id)
@@ -253,11 +255,31 @@ class JobCreationHelper:
         descriptor = self._read_descriptor(job_dir)
         return descriptor
 
+    def list_job_ids(self, username: str) -> list[str]:
+        job_ids = set()
+        for base_dir in (AppConfig.RUNS_DIR, AppConfig.LEGACY_RUNS_DIR):
+            user_dir = base_dir / username
+            if not user_dir.exists():
+                continue
+            for entry in user_dir.iterdir():
+                if entry.is_dir():
+                    job_ids.add(entry.name)
+        return sorted(job_ids)
+
+    def resolve_job_dir(self, username: str, job_id: str) -> Path:
+        job_dir = self._job_dir(username, job_id)
+        if job_dir.exists():
+            return job_dir
+        legacy_job_dir = AppConfig.LEGACY_RUNS_DIR / username / job_id
+        if legacy_job_dir.exists():
+            return legacy_job_dir
+        return job_dir
+
     def _job_dir(self, username: str, job_id: str) -> Path:
         return self.base / username / job_id
 
     def _ensure_job_dir(self, username: str, job_id: str) -> Path:
-        job_dir = self._job_dir(username, job_id)
+        job_dir = self.resolve_job_dir(username, job_id)
         if not job_dir.exists():
             raise FileNotFoundError("job not found")
         return job_dir
@@ -291,11 +313,14 @@ class JobCreationController:
 
     def register_routes(self):
         @self.app.post("/api/job/init")
+        @api_user_required(match_username=False)
         def init_job():
             body = request.get_json(silent=True) or {}
-            username = body.get("username")
+            username = (body.get("username") or get_jwt_identity() or "").strip()
             if not username:
                 return {"success": False, "error": "username required"}, 400
+            if body.get("username") and body.get("username") != get_jwt_identity():
+                return {"success": False, "error": "forbidden"}, 403
             descriptor = body.get("descriptor")
             try:
                 result = jobCreationService.create_job(username, descriptor)
@@ -304,6 +329,7 @@ class JobCreationController:
                 return {"success": False, "error": str(e)}, 500
 
         @self.app.post("/api/job/<username>/<jobid>/stores")
+        @api_user_required()
         def load_stores(username: str, jobid: str):
             body = request.get_json(silent=True) or {}
             stores = body.get("stores")
@@ -318,6 +344,7 @@ class JobCreationController:
                 return {"success": False, "error": str(e)}, 400
 
         @self.app.post("/api/job/<username>/<jobid>/stores-with-radius")
+        @api_user_required()
         def load_stores_with_radius(username: str, jobid: str):
             body = request.get_json(silent=True) or {}
             stores = body.get("stores")
@@ -337,6 +364,7 @@ class JobCreationController:
                 return {"success": False, "error": str(e)}, 500
 
         @self.app.post("/api/job/<username>/<jobid>/constraints")
+        @api_user_required()
         def load_constraints(username: str, jobid: str):
             body = request.get_json(silent=True) or {}
             constraints = body.get("constraints")
@@ -349,6 +377,7 @@ class JobCreationController:
                 return {"success": False, "error": "job not found"}, 404
 
         @self.app.post("/api/job/<username>/<jobid>/settings")
+        @api_user_required()
         def load_settings(username: str, jobid: str):
             body = request.get_json(silent=True) or {}
             settings = body.get("settings")
@@ -361,6 +390,7 @@ class JobCreationController:
                 return {"success": False, "error": "job not found"}, 404
 
         @self.app.post("/api/job/<username>/<jobid>/calc")
+        @api_user_required()
         def load_calc(username: str, jobid: str):
             body = request.get_json(silent=True) or {}
             calc = body.get("calc")
@@ -373,6 +403,7 @@ class JobCreationController:
                 return {"success": False, "error": "job not found"}, 404
 
         @self.app.post("/api/job/<username>/<jobid>/export")
+        @api_user_required()
         def export_job(username: str, jobid: str):
             try:
                 result = jobCreationService.export_job(username, jobid)
@@ -383,6 +414,7 @@ class JobCreationController:
                 return {"success": False, "error": str(e)}, 500
 
         @self.app.post("/api/job/<username>/<jobid>/finish")
+        @api_user_required()
         def job_init_finish(username: str, jobid: str):
             try:
                 result = jobCreationService.job_init_finish(username, jobid)
@@ -391,3 +423,4 @@ class JobCreationController:
                 return {"success": False, "error": "job not found"}, 404
             except Exception as e:
                 return {"success": False, "error": str(e)}, 500
+

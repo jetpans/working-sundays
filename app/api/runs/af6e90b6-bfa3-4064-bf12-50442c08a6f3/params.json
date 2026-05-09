@@ -1,8 +1,0 @@
-{
-  "command": [
-    "cmd",
-    "/c",
-    "echo",
-    "template-job"
-  ]
-}
