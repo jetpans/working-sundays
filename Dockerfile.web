@@ -12,8 +12,12 @@ ENV NEXT_PUBLIC_API_SERVER=${NEXT_PUBLIC_API_SERVER}
 COPY app/web/package*.json ./
 COPY app/web/ ./
 
+RUN npm ci && npm run build
 # Diagnostic: ensure files exist (helpful for CI builds)
-# RUN ls -la /app/web || true
+# Print directory contents so CI logs show whether the source was copied correctly.
+RUN ls -la /app/web || true
+RUN ls -la /app/web/src || true
+RUN ls -la /app/web/src/app || true
 
 RUN npm ci && npm run build
 
