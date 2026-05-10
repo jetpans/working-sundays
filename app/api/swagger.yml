@@ -215,6 +215,39 @@ paths:
           description: "Job not found"
         500:
           description: "Server error"
+  /api/job/{username}/{jobid}/run-info:
+    get:
+      tags:
+        - "Jobs"
+      summary: "Get job run status"
+      description: "Get lightweight run status and timestamps without loading the full job payload"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        200:
+          description: "Run status"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+        403:
+          description: "Forbidden"
+        404:
+          description: "Job not found"
+        500:
+          description: "Server error"
     delete:
       tags:
         - "Jobs"

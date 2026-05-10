@@ -99,6 +99,25 @@ class JobsController:
             except Exception as e:
                 return {"success": False, "error": str(e)}, 500
 
+        @self.app.get("/api/job/<username>/<jobid>/run-info")
+        @api_user_required()
+        def get_run_info(username: str, jobid: str):
+            try:
+                descriptor = jobCreationService.get_job(username, jobid)
+                run_info = descriptor.get("run_info") or {}
+                return {
+                    "success": True,
+                    "data": {
+                        "status": run_info.get("status", "Uninitialized"),
+                        "created_at": descriptor.get("created_at"),
+                        "updated_at": run_info.get("updated_at"),
+                    },
+                }, 200
+            except FileNotFoundError:
+                return {"success": False, "error": "job not found"}, 404
+            except Exception as e:
+                return {"success": False, "error": str(e)}, 500
+
         @self.app.post("/api/job/<username>/<jobid>/run")
         @api_user_required()
         def run_job(username: str, jobid: str):
@@ -132,6 +151,7 @@ class JobsController:
                     "updated_at": self._utc_now(),
                 }
                 jobCreationService._write_json(descriptor_path, descriptor)
+                self._emit_run_status(key, descriptor["run_info"]["status"], descriptor["run_info"]["updated_at"])
             except Exception as e:
                 return {"success": False, "error": str(e)}, 500
 
@@ -180,8 +200,10 @@ class JobsController:
                     exit_code = proc.wait()
                     status = "Complete" if exit_code == 0 else "Error"
                     self._update_run_status(job_dir, status)
+                    self._emit_run_status(key, status, self._utc_now())
                 except Exception:
                     self._update_run_status(job_dir, "Error")
+                    self._emit_run_status(key, "Error", self._utc_now())
                 finally:
                     if key in self._runs:
                         self._runs.pop(key, None)
@@ -216,6 +238,7 @@ class JobsController:
 
             job_dir = jobCreationService.resolve_job_dir(username, jobid)
             self._update_run_status(job_dir, "Error")
+            self._emit_run_status(key, "Error", self._utc_now())
 
             try:
                 (job_dir / "run.log").write_text((job_dir / "run.log").read_text() + "\n--- TERMINATED ---\n")
@@ -501,6 +524,19 @@ class JobsController:
 
             key = f"{username}:{jobid}"
             join_room(key)
+            try:
+                descriptor = jobCreationService.get_job(username, jobid)
+                run_info = descriptor.get("run_info") or {}
+                self.socketio.emit(
+                    "run_status",
+                    {
+                        "status": run_info.get("status", "Uninitialized"),
+                        "updated_at": run_info.get("updated_at"),
+                    },
+                    room=key,
+                )
+            except Exception:
+                pass
 
     def _update_run_status(self, job_dir: Path, status: str) -> None:
         try:
@@ -510,6 +546,19 @@ class JobsController:
                 "updated_at": self._utc_now(),
             }
             jobCreationService._write_json(job_dir / "descriptor.job", descriptor)
+        except Exception:
+            pass
+
+    def _emit_run_status(self, room: str, status: str, updated_at: str) -> None:
+        try:
+            self.socketio.emit(
+                "run_status",
+                {
+                    "status": status,
+                    "updated_at": updated_at,
+                },
+                room=room,
+            )
         except Exception:
             pass
 

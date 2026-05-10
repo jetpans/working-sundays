@@ -16,15 +16,17 @@ from flask_jwt_extended import get_jwt_identity
 from config import AppConfig
 from security import api_user_required
 
-# Ensure repo root is on sys.path for processing imports
-repo_root = str(AppConfig.REPO_ROOT)
-if repo_root not in sys.path:
-    sys.path.append(repo_root)
+# Ensure the workspace root is on sys.path for processing imports
+workspace_root = str(AppConfig.WORKSPACE_ROOT)
+if workspace_root not in sys.path:
+    sys.path.append(workspace_root)
 
+PROCESS_STORES_IMPORT_ERROR: Exception | None = None
 try:
     from processing.calculate_radiuses import process_stores
-except Exception:
+except Exception as exc:
     process_stores = None
+    PROCESS_STORES_IMPORT_ERROR = exc
 
 
 @dataclass
@@ -75,7 +77,8 @@ class JobCreationHelper:
     def load_stores_with_radius(self, username: str, job_id: str, stores: Dict[str, Dict], radius_calc: str) -> Dict:
         job_dir = self._ensure_job_dir(username, job_id)
         if process_stores is None:
-            raise RuntimeError("radius processing module not available")
+            detail = f": {PROCESS_STORES_IMPORT_ERROR}" if PROCESS_STORES_IMPORT_ERROR else ""
+            raise RuntimeError(f"radius processing module not available{detail}")
         for sid, store in stores.items():
             if not all(k in store for k in ("name", "brand", "formatted_address", "coordinates")):
                 raise ValueError(f"Store {sid} missing required fields")

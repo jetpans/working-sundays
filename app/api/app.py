@@ -41,7 +41,7 @@ app.config["JWT_HEADER_NAME"] = "Authorization"
 app.config["JWT_HEADER_TYPE"] = "Bearer"
 
 jwt = JWTManager(app)
-socketio = SocketIO(app, cors_allowed_origins=allowed_origins)
+socketio = SocketIO(app, cors_allowed_origins=allowed_origins, async_mode="gevent")
 
 # Setup Swagger documentation
 setup_swagger(app)

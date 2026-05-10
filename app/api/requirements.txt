@@ -1,9 +1,12 @@
 Flask>=3.0.0
 Flask-Cors>=4.0.0
 Flask-SocketIO>=5.4.1
+gevent>=24.2.1
+gevent-websocket>=0.10.1
 Flask-Bcrypt
 Flask-JWT-Extended>=4.6.0
 python-dotenv>=1.0.1
+requests>=2.32.3
 psutil>=5.9.8
 numpy>=1.24.0
 shapely>=2.0.0

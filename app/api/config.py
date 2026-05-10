@@ -13,7 +13,7 @@ class AppConfig:
     FLASK_ENV = os.getenv("FLASK_ENV", "development")
     HOST = os.getenv("HOST", "0.0.0.0")
     PORT = int(os.getenv("PORT", "5000"))
-    DEBUG = os.getenv("DEBUG", "true").lower() == "true"
+    DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
     WORKSPACE_ROOT = Path(os.getenv("WORKSPACE_ROOT", str(REPO_ROOT))).resolve()
     RUNS_DIR = Path(os.getenv("RUNS_DIR", str(APP_DIR / "jobs"))).resolve()
