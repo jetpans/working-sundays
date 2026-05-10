@@ -3,7 +3,12 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy frontend sources (repo root -> app/web)
+# NEXT_PUBLIC_API_SERVER is optional; defaults to sundays.jetpans.com
+# Can be overridden at build time: docker build --build-arg NEXT_PUBLIC_API_SERVER=localhost:5000 .
+ARG NEXT_PUBLIC_API_SERVER=sundays.jetpans.com
+ENV NEXT_PUBLIC_API_SERVER=${NEXT_PUBLIC_API_SERVER}
+
+# Copy frontend sources
 COPY app/web/package*.json ./
 COPY app/web/ .
 RUN npm ci && npm run build

@@ -58,6 +58,10 @@ WORKDIR /app/api
 RUN groupadd -r app && useradd -r -g app -d /home/app -m app || true
 RUN mkdir -p /home/app/.cache && chown -R app:app /home/app
 ENV HOME=/home/app
+
+# Create job and auth directories with proper permissions before switching user
+RUN mkdir -p /app/api/jobs /app/api/auth && chown -R app:app /app/api/jobs /app/api/auth
+
 USER app
 
 EXPOSE 5000

@@ -15,7 +15,7 @@ from flask_jwt_extended import decode_token
 from config import AppConfig
 from controllers.jobCreationController import jobCreationService
 from security import api_user_required
-
+import os
 
 class JobsController:
     """
@@ -134,7 +134,16 @@ class JobsController:
 
             results_dir = job_dir / "results"
             if results_dir.exists():
-                shutil.rmtree(results_dir)
+                try:
+                    shutil.rmtree(results_dir)
+                except PermissionError:
+                    # Handle permission errors when deleting results (e.g., file locked or wrong permissions)
+                    import stat
+
+                    def handle_remove_readonly(func, path, exc):
+                        os.chmod(path, stat.S_IWRITE)
+                        func(path)
+                    shutil.rmtree(results_dir, onerror=handle_remove_readonly)
             results_dir.mkdir(parents=True, exist_ok=True)
 
             run_log_path = job_dir / "run.log"

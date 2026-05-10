@@ -6,7 +6,9 @@ services:
       target: runtime
     container_name: working-sundays-server
     ports:
-      - "5000:5000"
+      - "5001:5000"
+    env_file:
+      - ./app/api/.env
     environment:
       - FLASK_ENV=production
       - DEBUG=false
@@ -16,13 +18,12 @@ services:
       - LEGACY_RUNS_DIR=/app/api/runs
       - AUTH_DIR=/app/api/auth
       - AUTH_USERS_FILE=/app/api/auth/users.json
-      - AUTH_JWT_SECRET_FILE=/app/api/auth/.jwt_secret
       - JAVA_BIN=java
       - JAVA_JAR=/app/api/algorithm.jar
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-me-in-production-min-32-bytes}
     volumes:
-      - ./app/api/jobs:/app/api/jobs
-      - ./app/api/runs:/app/api/runs
-      - ./app/api/auth:/app/api/auth
+      - working-sundays-jobs:/app/api/jobs:rw
+      - working-sundays-auth:/app/api/auth:rw
     restart: unless-stopped
 
   web:
@@ -31,10 +32,16 @@ services:
       dockerfile: Dockerfile.web
     container_name: working-sundays-web
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
     depends_on:
       - server
     restart: unless-stopped
+
+volumes:
+  working-sundays-jobs:
+    driver: local
+  working-sundays-auth:
+    driver: local

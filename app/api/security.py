@@ -25,23 +25,13 @@ def utc_now() -> str:
 
 
 def ensure_jwt_secret() -> str:
-    secret = os.environ.get("JWT_SECRET_KEY") or os.environ.get("AUTH_JWT_SECRET")
-    if secret:
-        return secret
-
-    secret_file = AppConfig.AUTH_JWT_SECRET_FILE
-    secret_file.parent.mkdir(parents=True, exist_ok=True)
-    if secret_file.exists():
-        secret = secret_file.read_text(encoding="utf-8").strip()
-        if secret:
-            return secret
-
-    secret = secrets.token_urlsafe(64)
-    secret_file.write_text(secret, encoding="utf-8")
-    try:
-        os.chmod(secret_file, 0o600)
-    except Exception:
-        pass
+    # JWT_SECRET_KEY must be provided as an environment variable for production
+    secret = os.environ.get("JWT_SECRET_KEY")
+    if not secret:
+        raise RuntimeError(
+            "JWT_SECRET_KEY environment variable is required but not set. "
+            "Set it on your server or in your deployment configuration."
+        )
     return secret
 
 
