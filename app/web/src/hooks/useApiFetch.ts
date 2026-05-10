@@ -5,10 +5,18 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 
 function buildApiUrl(server: string, path: string) {
-  const normalizedServer = server.startsWith("http://") || server.startsWith("https://")
-    ? server
-    : `http://${server}`;
-  return `${normalizedServer}${path}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const baseServer = server.trim().replace(/\/+$/, "");
+
+  if (!baseServer) {
+    return `${window.location.origin}${normalizedPath}`;
+  }
+
+  const normalizedServer = baseServer.startsWith("http://") || baseServer.startsWith("https://")
+    ? baseServer
+    : `${window.location.protocol}//${baseServer}`;
+
+  return `${normalizedServer}${normalizedPath}`;
 }
 
 export function useApiFetch() {
