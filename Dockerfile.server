@@ -44,7 +44,6 @@ COPY --from=pybuilder /wheels /wheels
 COPY app/api/ ./api
 COPY processing/ ./processing
 COPY util.py ./util.py
-COPY myenv.py ./myenv.py
 COPY --from=javabuilder /out/*.jar /app/api/algorithm.jar
 
 # Install packages from wheels (offline install)
