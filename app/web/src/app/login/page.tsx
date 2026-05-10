@@ -12,19 +12,30 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const buildLoginUrl = () => {
+    const base = server.trim().replace(/\/+$/, "");
+    if (!base) {
+      return `${window.location.origin}/api/auth/login`;
+    }
+
+    const normalizedBase =
+      base.startsWith("http://") || base.startsWith("https://")
+        ? base
+        : `${window.location.protocol}//${base}`;
+
+    return `${normalizedBase}/api/auth/login`;
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(
-        `http://${server}/api/auth/login`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
-        },
-      );
+      const response = await fetch(buildLoginUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || !payload?.success) {
@@ -53,12 +64,16 @@ export default function LoginPage() {
         </p>
         <h1 className="mt-3 text-3xl font-semibold text-slate-900">Login</h1>
         <p className="mt-3 text-sm text-slate-600">
-          Sign in with one of the trusted file-backed accounts configured on the backend.
+          Sign in with one of the trusted file-backed accounts configured on the
+          backend.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-sm font-medium text-slate-700" htmlFor="server">
+            <label
+              className="block text-sm font-medium text-slate-700"
+              htmlFor="server"
+            >
               Server
             </label>
             <input
@@ -66,12 +81,15 @@ export default function LoginPage() {
               className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
               value={server}
               onChange={(event) => setServer(event.target.value)}
-              placeholder="localhost:5000"
+              placeholder="sundays.jetpans.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700" htmlFor="username">
+            <label
+              className="block text-sm font-medium text-slate-700"
+              htmlFor="username"
+            >
               Username
             </label>
             <input
@@ -84,7 +102,10 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700" htmlFor="password">
+            <label
+              className="block text-sm font-medium text-slate-700"
+              htmlFor="password"
+            >
               Password
             </label>
             <input
