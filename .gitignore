@@ -5,8 +5,7 @@ __pycache__/
 
 .sunday-cache/
 
-src
-backend
+
 # C extensions
 *.so
 
@@ -191,3 +190,6 @@ app/api/auth/
 **.zip
 **.xlsx
 myenv.py
+
+/src
+/backend
