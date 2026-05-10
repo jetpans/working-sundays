@@ -1,0 +1,74 @@
+# Multi-stage build that compiles Java algorithm and Python wheels, then produces a minimal runtime
+
+# Java builder: use Eclipse Temurin JDK and install Maven, then build the fat JAR
+FROM eclipse-temurin:21-jdk AS javabuilder
+ARG MAVEN_VERSION=3.9.6
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl tar ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
+    | tar xz -C /opt \
+    && ln -s /opt/apache-maven-${MAVEN_VERSION} /opt/maven
+ENV PATH="/opt/maven/bin:${PATH}"
+WORKDIR /src/algorithm-java
+COPY algorithm-java/ ./
+# The pom now attaches the assembly jar during the package phase.
+RUN mvn -B clean package -DskipTests
+RUN mkdir -p /out && cp target/*-jar-with-dependencies.jar /out/algorithm.jar
+
+# Python builder: build wheels for native packages
+FROM python:3.11-slim AS pybuilder
+WORKDIR /app
+ENV PIP_NO_CACHE_DIR=1 PIP_ROOT_USER_ACTION=ignore
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential gcc libgeos-dev ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY app/api/requirements.txt ./requirements.txt
+RUN pip install --upgrade pip setuptools wheel \
+    && pip wheel -w /wheels -r requirements.txt
+
+# Final runtime image: Python runtime + JRE + app code + algorithm JAR
+FROM python:3.11-slim AS runtime
+WORKDIR /app
+ENV PIP_NO_CACHE_DIR=1 PYTHONUNBUFFERED=1
+ENV WORKSPACE_ROOT=/app
+ENV REPO_ROOT=/app
+
+# Install minimal runtime libs: libgeos for shapely and a JRE for running the algorithm jar
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgeos-dev ca-certificates default-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy built wheels and application code
+COPY --from=pybuilder /wheels /wheels
+COPY app/api/ ./api
+COPY processing/ ./processing
+COPY util.py ./util.py
+COPY myenv.py ./myenv.py
+COPY --from=javabuilder /out/*.jar /app/api/algorithm.jar
+
+# Install packages from wheels (offline install)
+COPY app/api/requirements.txt ./requirements.txt
+RUN pip install --no-index --find-links /wheels -r requirements.txt \
+    && rm -rf /wheels
+
+WORKDIR /app/api
+
+# Create unprivileged user
+RUN groupadd -r app && useradd -r -g app -d /home/app -m app || true
+RUN mkdir -p /home/app/.cache && chown -R app:app /home/app
+ENV HOME=/home/app
+
+# Create job and auth directories with proper permissions before switching user
+RUN mkdir -p /app/api/jobs /app/api/auth && chown -R app:app /app/api/jobs /app/api/auth
+
+USER app
+
+EXPOSE 5000
+
+# Default environment variables to point to the embedded java jar
+ENV JAVA_BIN=java
+ENV JAVA_JAR=/app/api/algorithm.jar
+
+# Run under Gunicorn with the gevent-websocket worker for production Socket.IO support
+CMD ["gunicorn", "--worker-class", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "--workers", "1", "--bind", "0.0.0.0:5000", "app:app"]

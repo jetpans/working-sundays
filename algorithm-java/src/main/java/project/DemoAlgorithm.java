@@ -49,7 +49,7 @@ public class DemoAlgorithm<T extends Chromosome> {
             population.sort(Comparator.comparingDouble(a -> a.fitness)); // Order the dudes
 
 
-            if (iteration % 50 == 0) {
+            if (iteration % 200 == 0) {
                 s.logger.printf(LogLevel.VERBOSE, "\rIteration: " + iteration);
                 lastWasAlpha = false;
             }

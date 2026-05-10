@@ -1,0 +1,851 @@
+swagger: "2.0"
+info:
+  title: "Working Sundays API"
+  description: "Job scheduling and store management optimization API"
+  version: "1.0.0"
+  contact:
+    name: "Working Sundays Team"
+host: "localhost:5000"
+basePath: "/"
+schemes:
+  - "http"
+  - "https"
+securityDefinitions:
+  Bearer:
+    type: "apiKey"
+    name: "Authorization"
+    in: "header"
+    description: "JWT Authorization header using Bearer scheme. Example: Bearer <token>"
+paths:
+  /api/auth/login:
+    post:
+      tags:
+        - "Authentication"
+      summary: "User login"
+      description: "Authenticate with username and password to receive JWT token"
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required:
+              - "username"
+              - "password"
+            properties:
+              username:
+                type: "string"
+                example: "jetpans"
+              password:
+                type: "string"
+                example: "password123"
+      responses:
+        200:
+          description: "Login successful, returns JWT token"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+                properties:
+                  user:
+                    type: "object"
+                    properties:
+                      username:
+                        type: "string"
+                  access_token:
+                    type: "string"
+        400:
+          description: "Missing username or password"
+        401:
+          description: "Invalid credentials"
+  /api/auth/me:
+    get:
+      tags:
+        - "Authentication"
+      summary: "Get current authenticated user"
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: "Returns current user info"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+                properties:
+                  username:
+                    type: "string"
+        401:
+          description: "Unauthorized"
+  /api/auth/logout:
+    post:
+      tags:
+        - "Authentication"
+      summary: "Logout endpoint"
+      description: "Logout handled client-side (JWT invalidation)"
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: "Logout acknowledged"
+        401:
+          description: "Unauthorized"
+  /api/heartbeat:
+    get:
+      tags:
+        - "Health"
+      summary: "API heartbeat"
+      description: "Health check endpoint"
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: "API is healthy"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+                properties:
+                  status:
+                    type: "string"
+                  timestamp:
+                    type: "string"
+                    format: "date-time"
+  /api/job/init:
+    post:
+      tags:
+        - "Job Creation"
+      summary: "Initialize new job"
+      description: "Create a new job for the authenticated user"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "body"
+          name: "body"
+          schema:
+            type: "object"
+            properties:
+              username:
+                type: "string"
+              descriptor:
+                type: "object"
+      responses:
+        201:
+          description: "Job created successfully"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+        400:
+          description: "Invalid request body"
+        403:
+          description: "Forbidden"
+        500:
+          description: "Server error"
+  /api/jobs/{username}:
+    get:
+      tags:
+        - "Jobs"
+      summary: "List all jobs for user"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+      responses:
+        200:
+          description: "List of job IDs"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "array"
+                items:
+                  type: "string"
+        403:
+          description: "Forbidden"
+        500:
+          description: "Server error"
+  /api/job/{username}/{jobid}:
+    get:
+      tags:
+        - "Jobs"
+      summary: "Get job information"
+      description: "Get comprehensive job info including descriptor, files, and status"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        200:
+          description: "Job information"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+        403:
+          description: "Forbidden"
+        404:
+          description: "Job not found"
+        500:
+          description: "Server error"
+  /api/job/{username}/{jobid}/run-info:
+    get:
+      tags:
+        - "Jobs"
+      summary: "Get job run status"
+      description: "Get lightweight run status and timestamps without loading the full job payload"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        200:
+          description: "Run status"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+        403:
+          description: "Forbidden"
+        404:
+          description: "Job not found"
+        500:
+          description: "Server error"
+    delete:
+      tags:
+        - "Jobs"
+      summary: "Delete job"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        200:
+          description: "Job deleted"
+        404:
+          description: "Job not found"
+        500:
+          description: "Server error"
+  /api/job/{username}/{jobid}/stores:
+    post:
+      tags:
+        - "Job Creation"
+      summary: "Save job stores"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            properties:
+              stores:
+                type: "object"
+                description: "Mapping of store IDs to store objects"
+      responses:
+        200:
+          description: "Stores saved"
+        400:
+          description: "Invalid stores payload"
+        404:
+          description: "Job not found"
+  /api/job/{username}/{jobid}/stores-with-radius:
+    post:
+      tags:
+        - "Job Creation"
+      summary: "Save stores and compute radius"
+      description: "Save stores and compute radius values using calculator"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            properties:
+              stores:
+                type: "object"
+              radius_calc:
+                type: "string"
+      responses:
+        200:
+          description: "Stores processed"
+        400:
+          description: "Invalid payload"
+        404:
+          description: "Job not found"
+        500:
+          description: "Processing failed"
+  /api/job/{username}/{jobid}/constraints:
+    post:
+      tags:
+        - "Job Creation"
+      summary: "Save job constraints"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            properties:
+              constraints:
+                type: "object"
+      responses:
+        200:
+          description: "Constraints saved"
+        400:
+          description: "Invalid payload"
+        404:
+          description: "Job not found"
+  /api/job/{username}/{jobid}/settings:
+    post:
+      tags:
+        - "Job Creation"
+      summary: "Save job settings"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            properties:
+              settings:
+                type: "object"
+      responses:
+        200:
+          description: "Settings saved"
+        400:
+          description: "Invalid payload"
+        404:
+          description: "Job not found"
+  /api/job/{username}/{jobid}/calc:
+    post:
+      tags:
+        - "Job Creation"
+      summary: "Save value calculator script"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            properties:
+              calc:
+                type: "string"
+      responses:
+        200:
+          description: "Calculator saved"
+        400:
+          description: "Invalid payload"
+        404:
+          description: "Job not found"
+  /api/job/{username}/{jobid}/export:
+    post:
+      tags:
+        - "Job Creation"
+      summary: "Export job snapshot"
+      description: "Export full job descriptor snapshot with all configuration"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        200:
+          description: "Export payload"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+        404:
+          description: "Job not found"
+        500:
+          description: "Server error"
+  /api/job/{username}/{jobid}/finish:
+    post:
+      tags:
+        - "Job Creation"
+      summary: "Finalize job initialization"
+      description: "Validate and finalize job initialization"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        200:
+          description: "Finalization result"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+        404:
+          description: "Job not found"
+        500:
+          description: "Server error"
+  /api/job/{username}/{jobid}/run:
+    post:
+      tags:
+        - "Jobs"
+      summary: "Run job optimization"
+      description: "Run job asynchronously, streams logs via WebSocket"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        202:
+          description: "Job started"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+        404:
+          description: "Job not found"
+        409:
+          description: "Job already running"
+        500:
+          description: "Server error or JAVA_JAR not configured"
+  /api/job/{username}/{jobid}/terminate:
+    post:
+      tags:
+        - "Jobs"
+      summary: "Terminate running job"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        200:
+          description: "Job terminated"
+        409:
+          description: "Job not running"
+  /api/job/{username}/{jobid}/runlog:
+    get:
+      tags:
+        - "Jobs"
+      summary: "Get full run log"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        200:
+          description: "Full run log"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+                properties:
+                  lines:
+                    type: "array"
+                    items:
+                      type: "string"
+                  updated_at:
+                    type: "number"
+        500:
+          description: "Server error"
+  /api/job/{username}/{jobid}/runlog/tail:
+    get:
+      tags:
+        - "Jobs"
+      summary: "Get run log tail"
+      description: "Get incremental run log chunk from byte offset"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+        - in: "query"
+          name: "offset"
+          type: "integer"
+          description: "Byte offset to read from"
+        - in: "query"
+          name: "max_bytes"
+          type: "integer"
+          description: "Maximum bytes to read"
+      responses:
+        200:
+          description: "Incremental run log chunk"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+                properties:
+                  lines:
+                    type: "array"
+                    items:
+                      type: "string"
+                  offset:
+                    type: "integer"
+                  eof:
+                    type: "boolean"
+        500:
+          description: "Server error"
+  /api/job/{username}/{jobid}/results:
+    get:
+      tags:
+        - "Results"
+      summary: "List result files"
+      description: "List available result files from job execution"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        200:
+          description: "Result file list"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "array"
+                items:
+                  type: "string"
+        500:
+          description: "Server error"
+  /api/job/{username}/{jobid}/results/file:
+    get:
+      tags:
+        - "Results"
+      summary: "Read result file"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+        - in: "query"
+          name: "name"
+          type: "string"
+          required: true
+          description: "Result file name"
+      responses:
+        200:
+          description: "Result file JSON"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+        400:
+          description: "Missing name query parameter"
+        404:
+          description: "File not found"
+        500:
+          description: "Server error"
+  /api/job/{username}/{jobid}/results/polygons:
+    get:
+      tags:
+        - "Results"
+      summary: "Compute polygon overlays"
+      description: "Compute square polygon overlays for solution visualization"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+        - in: "query"
+          name: "name"
+          type: "string"
+          required: true
+          description: "Solution file name"
+      responses:
+        200:
+          description: "Per-Sunday polygons"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+        400:
+          description: "Missing name query parameter"
+        404:
+          description: "Required files not found"
+        500:
+          description: "Server error"
+  /api/job/{username}/{jobid}/results/stats:
+    get:
+      tags:
+        - "Results"
+      summary: "Compute result statistics"
+      description: "Compute random vs optimized result statistics"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+        - in: "query"
+          name: "random"
+          type: "string"
+          description: "Random solution file name"
+        - in: "query"
+          name: "optimized"
+          type: "string"
+          description: "Optimized solution file name"
+      responses:
+        200:
+          description: "Aggregated stats payload"
+          schema:
+            type: "object"
+            properties:
+              success:
+                type: "boolean"
+              data:
+                type: "object"
+        400:
+          description: "Required files missing"
+        500:
+          description: "Server error"
+  /api/job/{username}/{jobid}/result:
+    get:
+      tags:
+        - "Results Legacy"
+      summary: "Get job result (deprecated)"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        501:
+          description: "Not implemented"
+  /api/job/{username}/{jobid}/metrics:
+    get:
+      tags:
+        - "Results Legacy"
+      summary: "Get job metrics (deprecated)"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        501:
+          description: "Not implemented"
+  /api/job/{username}/{jobid}/visualization:
+    get:
+      tags:
+        - "Results Legacy"
+      summary: "Get job visualization (deprecated)"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        501:
+          description: "Not implemented"
+  /api/job/{username}/{jobid}/logs:
+    get:
+      tags:
+        - "Results Legacy"
+      summary: "Get job logs (deprecated)"
+      security:
+        - Bearer: []
+      parameters:
+        - in: "path"
+          name: "username"
+          type: "string"
+          required: true
+        - in: "path"
+          name: "jobid"
+          type: "string"
+          required: true
+      responses:
+        501:
+          description: "Not implemented"

@@ -1,0 +1,35 @@
+# Multi-stage build for Next.js frontend (minimal runtime)
+# Builder: install dev deps and build app
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# NEXT_PUBLIC_API_SERVER is optional; defaults to sundays.jetpans.com
+# Can be overridden at build time: docker build --build-arg NEXT_PUBLIC_API_SERVER=localhost:5000 .
+ARG NEXT_PUBLIC_API_SERVER=sundays.jetpans.com
+ENV NEXT_PUBLIC_API_SERVER=${NEXT_PUBLIC_API_SERVER}
+
+# Copy frontend sources
+COPY app/web/package*.json ./
+COPY app/web/ .
+RUN npm ci && npm run build
+
+# Runtime: install only production deps and copy build output
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Install production dependencies only (smaller final image)
+COPY app/web/package*.json ./
+RUN npm ci --production
+
+# Copy built artifacts from builder
+COPY --from=builder /app/.next .next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/next.config.ts ./next.config.ts
+
+EXPOSE 3000
+
+# Run as unprivileged user
+USER node
+
+CMD ["npm", "start"]

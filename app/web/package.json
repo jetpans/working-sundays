@@ -1,0 +1,33 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && next-sitemap --config next-sitemap.config.js",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "next": "16.2.4",
+    "postcss": "^8.5.13",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-leaflet": "^5.0.0",
+    "socket.io-client": "^4.7.5",
+    "sonner": "^1.7.2",
+    "swagger-ui-react": "^5.11.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "next-sitemap": "^4.2.3",
+    "tailwindcss": "^4.2.4",
+    "typescript": "^5"
+  }
+}

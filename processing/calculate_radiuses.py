@@ -22,7 +22,7 @@ COMPETITION_SENSITIVITY = 0.08
 # =================================================
 
 
-def process_stores(data):
+def process_stores(data, value_key='user_ratings_total', max_theoretical_radius_km=MAX_THEORETICAL_RADIUS_KM, min_radius_km=MIN_RADIUS_KM, competition_sensitivity=COMPETITION_SENSITIVITY):
     # Convert Dict to List for iteration, keeping track of IDs
     store_ids = list(data.keys())
     stores = [data[k] for k in store_ids]
@@ -30,12 +30,12 @@ def process_stores(data):
     # 1. Sanitize Data & Find Max
     max_ratings = 0
     for s in stores:
-        # Default to 10 ratings if missing
-        if 'user_ratings_total' not in s or s['user_ratings_total'] is None:
-            s['user_ratings_total'] = 10
-
-        if s['user_ratings_total'] > max_ratings:
-            max_ratings = s['user_ratings_total']
+        # Default to 2 ratings if missing
+        if value_key not in s or s[value_key] is None:
+            s[value_key] = 2
+            print(f"Warning: Store '{s.get('name', 'Unknown')}' missing '{value_key}', defaulting to 2.")
+        if s[value_key] > max_ratings:
+            max_ratings = s[value_key]
 
     if max_ratings == 0:
         max_ratings = 1.0
@@ -51,8 +51,8 @@ def process_stores(data):
 
         # --- A. BASE CALCULATION (Size) ---
         # Square root allows area to scale linearly with popularity
-        size_ratio = current['user_ratings_total'] / max_ratings
-        base_radius = math.sqrt(size_ratio) * MAX_THEORETICAL_RADIUS_KM
+        size_ratio = current[value_key] / max_ratings
+        base_radius = math.sqrt(size_ratio) * max_theoretical_radius_km
 
         # --- B. GRAVITY MODEL (Competition) ---
         pressure_sum = 0.0
@@ -73,19 +73,19 @@ def process_stores(data):
             # The Gravity Formula: Mass / Distance^2
             # Bigger neighbors exert more pressure.
             # Neighbors further away exert exponentially less pressure.
-            other_mass = other['user_ratings_total'] / max_ratings
+            other_mass = other[value_key] / max_ratings
             pressure = other_mass / (dist ** 2)
 
             pressure_sum += pressure
 
         # --- C. DECAY FUNCTION ---
         # Radius = Base / (1 + (Sensitivity * Pressure))
-        decay_factor = 1.0 + (COMPETITION_SENSITIVITY * pressure_sum)
+        decay_factor = 1.0 + (competition_sensitivity * pressure_sum)
         final_radius = base_radius / decay_factor
 
         # --- D. CLAMPING ---
-        if final_radius < MIN_RADIUS_KM:
-            final_radius = MIN_RADIUS_KM
+        if final_radius < min_radius_km:
+            final_radius = min_radius_km
 
         # Update the dictionary object in place
         current['radius_km'] = round(final_radius, 4)

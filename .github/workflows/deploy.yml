@@ -1,0 +1,77 @@
+name: Deploy application
+
+on: 
+  push:
+    branches:
+      - main
+
+env:
+  BACKEND_IMAGE: jetpans/working-sundays:backend-latest
+  FRONTEND_IMAGE: jetpans/working-sundays:frontend-latest
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Determine what to build
+      id: vars
+      run: |
+        echo "BUILD_FRONTEND=false" >> $GITHUB_ENV
+        echo "BUILD_BACKEND=false"  >> $GITHUB_ENV
+
+        COMMIT_MSG="${{ github.event.head_commit.message }}"
+        # trim leading whitespace
+        COMMIT_MSG="$(printf '%s' "$COMMIT_MSG" | sed -E 's/^[[:space:]]+//')"
+
+        if [[ -z "$COMMIT_MSG" ]]; then
+          echo "No commit message found."
+          exit 0
+        fi
+
+        # use regex to match (all), (frontend), or (backend) at start
+        if [[ "$COMMIT_MSG" =~ ^\(all\) ]]; then
+          echo "BUILD_FRONTEND=true" >> $GITHUB_ENV
+          echo "BUILD_BACKEND=true"  >> $GITHUB_ENV
+        elif [[ "$COMMIT_MSG" =~ ^\(frontend\) ]]; then
+          echo "BUILD_FRONTEND=true" >> $GITHUB_ENV
+        elif [[ "$COMMIT_MSG" =~ ^\(backend\) ]]; then
+          echo "BUILD_BACKEND=true"  >> $GITHUB_ENV
+        else
+          echo "No build triggered. Commit message must start with (frontend), (backend) or (all)."
+          exit 0
+        fi
+
+    - name: Build frontend Docker image
+      if: env.BUILD_FRONTEND == 'true'
+      run: |
+        docker build -f ./Dockerfile.web -t working-sundays-frontend .
+        docker tag working-sundays-frontend $FRONTEND_IMAGE
+        docker push $FRONTEND_IMAGE
+
+    - name: Build backend Docker image
+      if: env.BUILD_BACKEND == 'true'
+      run: |
+        docker build -f ./Dockerfile.server -t working-sundays-backend .
+        docker tag working-sundays-backend $BACKEND_IMAGE
+        docker push $BACKEND_IMAGE
+
+    - name: Deploy to server
+      if: env.BUILD_FRONTEND == 'true' || env.BUILD_BACKEND == 'true'
+      uses: appleboy/ssh-action@v0.1.7
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd /
+          bash ./deploy-sundays.sh
