@@ -16,29 +16,27 @@ interface ApiRoute {
   tags: string[];
 }
 
-interface SwaggerOperation {
+interface OpenApiOperation {
   summary?: string;
   description?: string;
   tags?: string[];
 }
 
-type SwaggerPathItem = Record<string, SwaggerOperation>;
+type OpenApiPathItem = Record<string, OpenApiOperation>;
 
-interface SwaggerSpec {
-  paths?: Record<string, SwaggerPathItem>;
+interface OpenApiSpec {
+  paths?: Record<string, OpenApiPathItem>;
 }
 
 export default function DocsPage() {
   const [sitemapEntries, setSitemapEntries] = useState<SitemapEntry[]>([]);
-  const [swaggerUrl, setSwaggerUrl] = useState<string>("");
   const [apiRoutes, setApiRoutes] = useState<ApiRoute[]>([]);
-  const [activeTab, setActiveTab] = useState<"swagger" | "sitemap">("swagger");
+  const [activeTab, setActiveTab] = useState<"docs" | "sitemap">("docs");
   const [loading, setLoading] = useState(true);
+  const docsUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/docs`;
 
   useEffect(() => {
-    const apiBaseUrl =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-    setSwaggerUrl(`${apiBaseUrl}/api/docs`);
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
     // Fetch sitemap entries
     const fetchSitemap = async () => {
@@ -66,17 +64,17 @@ export default function DocsPage() {
       }
     };
 
-    // Fetch API routes from Swagger spec
+    // Fetch API routes from the OpenAPI spec
     const fetchApiRoutes = async () => {
       try {
         const response = await fetch(`${apiBaseUrl}/apispec.json`);
         if (response.ok) {
-          const spec = (await response.json()) as SwaggerSpec;
+          const spec = (await response.json()) as OpenApiSpec;
           const routes: ApiRoute[] = [];
 
           for (const [path, methods] of Object.entries(spec.paths ?? {})) {
             for (const [method, operation] of Object.entries(
-              methods as SwaggerPathItem,
+              methods as OpenApiPathItem,
             )) {
               if (method !== "parameters") {
                 routes.push({
@@ -136,14 +134,14 @@ export default function DocsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-8">
             <button
-              onClick={() => setActiveTab("swagger")}
+              onClick={() => setActiveTab("docs")}
               className={`py-4 px-2 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === "swagger"
+                activeTab === "docs"
                   ? "border-blue-500 text-blue-600"
                   : "border-transparent text-slate-600 hover:text-slate-900"
               }`}
             >
-              API Swagger
+              API Docs
             </button>
             <button
               onClick={() => setActiveTab("sitemap")}
@@ -168,25 +166,24 @@ export default function DocsPage() {
           </div>
         ) : (
           <>
-            {/* Swagger Section */}
-            {activeTab === "swagger" && (
+            {/* Docs Section */}
+            {activeTab === "docs" && (
               <div className="space-y-6">
                 <div className="bg-white rounded-lg shadow-md p-6">
                   <h2 className="text-2xl font-bold text-slate-900 mb-4">
                     API Documentation
                   </h2>
                   <p className="text-slate-600 mb-6">
-                    Interactive Swagger UI for the Working Sundays API. Click
-                    the button below to access the full API documentation with
-                    try-it-out functionality.
+                    Open the API docs in a new tab to inspect the backend
+                    routes and try them out.
                   </p>
                   <a
-                    href={swaggerUrl}
+                    href={docsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    Open Swagger UI
+                    Open docs page
                     <svg
                       className="w-4 h-4 ml-2"
                       fill="none"
