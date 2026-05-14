@@ -10,6 +10,7 @@ interface SettingsTabProps {
   server: string;
   initialDescriptor?: any;
   onValidationChange?: (valid: boolean) => void;
+  onSaved?: (payload: { general: any; ga: any }) => void;
 }
 
 // Operator type lists (kept in sync with Java classes)
@@ -349,6 +350,7 @@ export default function SettingsTab({
   server,
   initialDescriptor,
   onValidationChange,
+  onSaved,
 }: SettingsTabProps) {
   const apiFetch = useApiFetch();
   // defaults
@@ -432,6 +434,7 @@ export default function SettingsTab({
         throw new Error(data?.error || "Failed to save settings");
       }
       onValidationChange?.(true);
+      onSaved?.({ general, ga });
       toast.success("Settings saved");
     } catch (e) {
       onValidationChange?.(false);

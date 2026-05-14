@@ -10,6 +10,7 @@ interface Job {
   id: string;
   created_at: string;
   status: string;
+  description?: string | null;
 }
 
 export default function JobsPage() {
@@ -19,6 +20,7 @@ export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [newDescription, setNewDescription] = useState("");
 
   const fetchJobs = async () => {
     try {
@@ -43,6 +45,7 @@ export default function JobsPage() {
                     id: jobId,
                     created_at: jobData.data.run_info?.created_at || "N/A",
                     status: jobData.data.run_info?.status || "unknown",
+                    description: jobData.data.descriptor?.description || null,
                   };
                 }
               }
@@ -72,7 +75,10 @@ export default function JobsPage() {
       setIsCreating(true);
       const response = await apiFetch(`/api/job/init`, {
         method: "POST",
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({
+          username,
+          description: newDescription.trim() || null,
+        }),
       });
 
       if (!response.ok) {
@@ -82,6 +88,7 @@ export default function JobsPage() {
       const data = await response.json();
       if (data.success) {
         toast.success("Job created successfully");
+        setNewDescription("");
         fetchJobs();
       } else {
         throw new Error(data.error || "Failed to create job");
@@ -127,13 +134,21 @@ export default function JobsPage() {
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Jobs</h1>
-        <button
-          onClick={createJob}
-          disabled={isCreating}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-        >
-          {isCreating ? "Creating..." : "Create Job"}
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            value={newDescription}
+            onChange={(event) => setNewDescription(event.target.value)}
+            placeholder="Description (optional)"
+            className="w-64 rounded border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none"
+          />
+          <button
+            onClick={createJob}
+            disabled={isCreating}
+            className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+          >
+            {isCreating ? "Creating..." : "Create Job"}
+          </button>
+        </div>
       </header>
 
       <section className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -150,6 +165,9 @@ export default function JobsPage() {
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
                     Job ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                    Description
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
                     Created
@@ -171,6 +189,9 @@ export default function JobsPage() {
                   >
                     <td className="px-4 py-3 text-sm font-mono text-slate-900">
                       {job.id.slice(0, 8)}...
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {job.description || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600">
                       {new Date(job.created_at).toLocaleDateString()} at{" "}

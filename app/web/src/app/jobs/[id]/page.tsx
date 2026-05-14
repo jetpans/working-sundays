@@ -51,6 +51,8 @@ export default function JobDetailsPage() {
     results: false,
   });
   const [jobInfo, setJobInfo] = useState<any | null>(null);
+  const [description, setDescription] = useState("");
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
 
   // Load job descriptor and any existing files so tabs can preload edit state
   useEffect(() => {
@@ -62,6 +64,7 @@ export default function JobDetailsPage() {
         const body = await res.json();
         if (body.success && mounted) {
           setJobInfo(body.data || null);
+          setDescription(body.data?.descriptor?.description || "");
         }
       } catch {
         // ignore
@@ -107,6 +110,24 @@ export default function JobDetailsPage() {
             jobId={jobId}
             server={server}
             initialDescriptor={jobInfo || undefined}
+            onSaved={({ general, ga }) => {
+              setJobInfo((prev: any) => {
+                if (!prev) return prev;
+                const prevDescriptor = prev.descriptor || {};
+                const prevSettings = prevDescriptor.settings || {};
+                return {
+                  ...prev,
+                  descriptor: {
+                    ...prevDescriptor,
+                    settings: {
+                      ...prevSettings,
+                      general,
+                      ga,
+                    },
+                  },
+                };
+              });
+            }}
             onValidationChange={(isValid) =>
               handleTabValidation("settings", isValid)
             }
@@ -137,6 +158,62 @@ export default function JobDetailsPage() {
         <p className="mt-1 text-sm text-slate-600">
           ID: {jobId.slice(0, 8)}...
         </p>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <label className="text-sm font-medium text-slate-600" htmlFor="job-description">
+            Description
+          </label>
+          <input
+            id="job-description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Describe this job"
+            className="min-w-[260px] flex-1 rounded border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none"
+          />
+          <button
+            type="button"
+            disabled={isSavingDescription}
+            onClick={async () => {
+              try {
+                setIsSavingDescription(true);
+                const res = await apiFetch(`/api/job/${username}/${jobId}/description`, {
+                  method: "POST",
+                  body: JSON.stringify({
+                    description: description.trim() || null,
+                  }),
+                });
+                if (!res.ok) {
+                  throw new Error(`Failed to save description (${res.status})`);
+                }
+                const body = await res.json();
+                if (!body.success) {
+                  throw new Error(body.error || "Failed to save description");
+                }
+                setJobInfo((prev: any) => {
+                  if (!prev) return prev;
+                  return {
+                    ...prev,
+                    descriptor: {
+                      ...prev.descriptor,
+                      description: description.trim() || null,
+                    },
+                  };
+                });
+                toast.success("Description saved");
+              } catch (error) {
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to save description",
+                );
+              } finally {
+                setIsSavingDescription(false);
+              }
+            }}
+            className="rounded border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            {isSavingDescription ? "Saving..." : "Save"}
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}

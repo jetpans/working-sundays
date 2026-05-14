@@ -462,37 +462,6 @@ paths:
           description: "Job not found"
         500:
           description: "Server error"
-  /api/job/{username}/{jobid}/finish:
-    post:
-      tags:
-        - "Job Creation"
-      summary: "Finalize job initialization"
-      description: "Validate and finalize job initialization"
-      security:
-        - Bearer: []
-      parameters:
-        - in: "path"
-          name: "username"
-          type: "string"
-          required: true
-        - in: "path"
-          name: "jobid"
-          type: "string"
-          required: true
-      responses:
-        200:
-          description: "Finalization result"
-          schema:
-            type: "object"
-            properties:
-              success:
-                type: "boolean"
-              data:
-                type: "object"
-        404:
-          description: "Job not found"
-        500:
-          description: "Server error"
   /api/job/{username}/{jobid}/run:
     post:
       tags:

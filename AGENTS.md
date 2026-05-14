@@ -78,7 +78,6 @@
     - `load_stores(username, jobid, stores)` → write data.json
     - `load_constraints(username, jobid, constraints)` → write constraints.json
     - `load_calc(username, jobid, calc_string)` → save calculator in descriptor
-    - `job_init_finish(username, jobid)` → validate files, calculate store values, update status
 
   - `controllers/jobsController.py` — JobsController class:
     - `GET /api/jobs/<username>` → list job IDs

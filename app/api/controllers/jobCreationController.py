@@ -34,6 +34,7 @@ class JobDescriptor:
     id: str
     username: str
     created_at: str
+    description: str | None
     settings: Dict[str, Any]
     value_calculator: str | None
     status: str
@@ -54,6 +55,7 @@ class JobCreationHelper:
             "id": job_id,
             "username": username,
             "created_at": self._utc_now(),
+            "description": None,
             "settings": {},
             "value_calculator": None,
             "status": "initialized",
@@ -156,6 +158,13 @@ class JobCreationHelper:
         self._write_json(job_dir / "descriptor.job", descriptor)
         return {"ok": True}
 
+    def load_description(self, username: str, job_id: str, description: str | None) -> Dict:
+        job_dir = self._ensure_job_dir(username, job_id)
+        descriptor = self._read_descriptor(job_dir)
+        descriptor["description"] = description
+        self._write_json(job_dir / "descriptor.job", descriptor)
+        return {"ok": True}
+
     def export_job(self, username: str, job_id: str) -> Dict:
         job_dir = self._ensure_job_dir(username, job_id)
         descriptor = self._read_descriptor(job_dir)
@@ -173,85 +182,7 @@ class JobCreationHelper:
         # while intentionally excluding run results.
         return {"ok": True, "descriptor": export_payload}
 
-    def job_init_finish(self, username: str, job_id: str) -> Dict:
-        job_dir = self._ensure_job_dir(username, job_id)
-        descriptor = self._read_descriptor(job_dir)
-
-        errors = []
-        data_path = job_dir / "data.json"
-        constraints_path = job_dir / "constraints.json"
-
-        if not data_path.exists():
-            errors.append("data.json missing")
-        if not constraints_path.exists():
-            errors.append("constraints.json missing")
-
-        if errors:
-            return {"ok": False, "errors": errors}
-
-        stores = self._read_json(data_path)
-        constraints = self._read_json(constraints_path)
-        store_ids = set(stores.keys())
-
-        # Validate constraints structure
-        required_constraint_fields = {"YEAR", "SUNDAYS", "MAX_WORKS", "MAX_DOESNT_WORK"}
-        missing_fields = required_constraint_fields - set(constraints.keys())
-        if missing_fields:
-            errors.append(f"constraints.json missing required fields: {', '.join(sorted(missing_fields))}")
-
-        # Validate all store IDs in constraints exist in data.json
-        constraint_store_ids = set()
-        for key, value in constraints.items():
-            if key not in required_constraint_fields:
-                constraint_store_ids.add(key)
-                if key not in store_ids:
-                    errors.append(f"Store '{key}' in constraints.json not found in data.json")
-                elif not isinstance(value, dict) or "works" not in value or "doesnt_work" not in value:
-                    errors.append(f"Store '{key}' in constraints.json missing 'works' or 'doesnt_work' arrays")
-
-        if errors:
-            return {"ok": False, "errors": errors}
-
-        calc = descriptor.get("value_calculator")
-
-        for sid, store in stores.items():
-            try:
-                value = None
-                if calc:
-                    proc = subprocess.run([
-                        AppConfig.PYTHON_BIN,
-                        "-c",
-                        calc,
-                    ], input=json.dumps(store).encode("utf-8"), capture_output=True, check=False)
-
-                    if proc.returncode == 0:
-                        out = proc.stdout.decode().strip()
-                        try:
-                            value = float(out)
-                        except Exception:
-                            value = None
-                if value is None:
-                    value = float(store.get("user_ratings_total", 1))
-            except Exception:
-                value = 1.0
-
-            # Store the calculated value in the store data
-            store["value"] = value
-
-            # TODO: Implement radius_km calculation using the value and radius_calculation function
-            raise NotImplementedError(
-                "radius_km calculation not yet implemented - awaiting radius_calculation function")
-
-        self._write_json(data_path, stores)
-
-        descriptor["status"] = "ready"
-        descriptor["run_info"] = {
-            "status": "Ready",
-            "updated_at": self._utc_now(),
-        }
-        self._write_json(job_dir / "descriptor.job", descriptor)
-
-        return {"ok": True, "descriptor": descriptor}
+    
 
     def get_job(self, username: str, job_id: str) -> Dict:
         job_dir = self._ensure_job_dir(username, job_id)
@@ -324,7 +255,9 @@ class JobCreationController:
                 return {"success": False, "error": "username required"}, 400
             if body.get("username") and body.get("username") != get_jwt_identity():
                 return {"success": False, "error": "forbidden"}, 403
-            descriptor = body.get("descriptor")
+            descriptor = body.get("descriptor") or {}
+            if "description" in body and "description" not in descriptor:
+                descriptor = {**descriptor, "description": body.get("description")}
             try:
                 result = jobCreationService.create_job(username, descriptor)
                 return {"success": True, "data": result}, 201
@@ -405,23 +338,25 @@ class JobCreationController:
             except FileNotFoundError:
                 return {"success": False, "error": "job not found"}, 404
 
+        @self.app.post("/api/job/<username>/<jobid>/description")
+        @api_user_required()
+        def load_description(username: str, jobid: str):
+            body = request.get_json(silent=True) or {}
+            description = body.get("description")
+            if description is not None and not isinstance(description, str):
+                return {"success": False, "error": "description must be a string"}, 400
+            try:
+                jobCreationService.load_description(username, jobid, description)
+                return {"success": True}
+            except FileNotFoundError:
+                return {"success": False, "error": "job not found"}, 404
+
         @self.app.post("/api/job/<username>/<jobid>/export")
         @api_user_required()
         def export_job(username: str, jobid: str):
             try:
                 result = jobCreationService.export_job(username, jobid)
                 return {"success": True, "data": result.get("descriptor")}, 200
-            except FileNotFoundError:
-                return {"success": False, "error": "job not found"}, 404
-            except Exception as e:
-                return {"success": False, "error": str(e)}, 500
-
-        @self.app.post("/api/job/<username>/<jobid>/finish")
-        @api_user_required()
-        def job_init_finish(username: str, jobid: str):
-            try:
-                result = jobCreationService.job_init_finish(username, jobid)
-                return {"success": True, "data": result}
             except FileNotFoundError:
                 return {"success": False, "error": "job not found"}, 404
             except Exception as e:

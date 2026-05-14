@@ -128,7 +128,6 @@ npm run build
    - POST `/api/job/{username}/{jobid}/settings` — Save settings
    - POST `/api/job/{username}/{jobid}/calc` — Save calculator
    - POST `/api/job/{username}/{jobid}/export` — Export job snapshot
-   - POST `/api/job/{username}/{jobid}/finish` — Validate & finalize
 
 3. **jobsController.py** (13+ endpoints)
    - GET `/api/jobs/{username}` — List jobs
