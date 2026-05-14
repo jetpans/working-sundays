@@ -46,6 +46,7 @@ public abstract class Settings<T extends Chromosome> {
     public int newChromosomes;
     public int elitism;
     public int numThreads = 4;
+    public boolean deterministic = true;
 
     public Mutator<T> mutator;
     public Crossover<T> crossover;
@@ -78,6 +79,7 @@ public abstract class Settings<T extends Chromosome> {
             copy.newChromosomes = other.newChromosomes;
             copy.elitism = other.elitism;
             copy.numThreads = other.numThreads;
+            copy.deterministic = other.deterministic;
             copy.mutator = other.mutator;
             copy.crossover = other.crossover;
             copy.selection = other.selection;
@@ -112,6 +114,7 @@ public abstract class Settings<T extends Chromosome> {
             settings.newChromosomes = getInt(ga, "newChromosomes", settings.newChromosomes);
             settings.elitism = getInt(ga, "elitism", settings.elitism);
             settings.numThreads = getInt(ga, "numThreads", settings.numThreads);
+            settings.deterministic = getBoolean(ga, "deterministic", settings.deterministic);
 
             settings.mutator = buildMutator(getObject(ga, "mutator"), settings.mutator);
             settings.crossover = buildCrossover(getObject(ga, "crossover"), settings.crossover);
@@ -331,6 +334,15 @@ public abstract class Settings<T extends Chromosome> {
         if (obj == null || !obj.has(key)) return fallback;
         try {
             return obj.get(key).getAsDouble();
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    private static boolean getBoolean(JsonObject obj, String key, boolean fallback) {
+        if (obj == null || !obj.has(key)) return fallback;
+        try {
+            return obj.get(key).getAsBoolean();
         } catch (Exception e) {
             return fallback;
         }

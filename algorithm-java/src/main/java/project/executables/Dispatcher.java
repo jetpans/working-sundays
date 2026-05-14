@@ -24,6 +24,7 @@ public class Dispatcher {
         String constraintPath = instanceFolder + "/constraints.json";
         Problem.load(constraintPath, dataPath);
         Settings<MatrixChromosome> settings = Settings.getSettings("project.settings.SmallRunSettings");
+        Global.configureRandom(settings.deterministic);
         List<List<String>> clusters = Util.generateClusters(Problem.getInstance().storeIds, 3, Global.MAX_CLUSTER_DISTANCE, Global.RANDOM);
 
         List<Cluster> currentPool = new ArrayList<>();

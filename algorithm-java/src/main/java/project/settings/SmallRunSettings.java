@@ -24,6 +24,7 @@ public class SmallRunSettings extends Settings<MatrixChromosome> {
         this.generations = 5000;
         this.newChromosomes = 2;
         this.elitism = 5;
+        this.deterministic = true;
 
         this.mutator = new CompositeMutator<>(1, List.of(new RandomSimpleMutator(5, 0.5)), new double[]{1});
         this.crossover = new CompositeCrossover<>(1, List.of(

@@ -55,6 +55,7 @@ public class CallableDispatcher {
             }
         }
         if (numThreads < 1) numThreads = 1;
+        Global.configureRandom(settings.deterministic);
 
         List<List<String>> clusters = Util.generateClusters(
                 Problem.getInstance().storeIds,

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useApiFetch } from "@/hooks/useApiFetch";
+import { toast } from "sonner";
 
 interface SettingsTabProps {
   username: string;
@@ -363,6 +364,7 @@ export default function SettingsTab({
         newChromosomes: 2,
         elitism: 5,
         numThreads: 4,
+        deterministic: true,
         mutator: {
           type: "CompositeMutator",
           params: { p: 1, weights: [1], children: [] },
@@ -396,6 +398,7 @@ export default function SettingsTab({
       ga.newChromosomes !== undefined &&
       ga.elitism !== undefined &&
       ga.numThreads !== undefined &&
+      ga.deterministic !== undefined &&
       !!ga.mutator?.type &&
       !!ga.crossover?.type &&
       !!ga.selection?.type &&
@@ -418,15 +421,21 @@ export default function SettingsTab({
 
   const save = async () => {
     setSaving(true);
-    const payload = { settings: { general, ga } };
     try {
       const res = await apiFetch(`/api/job/${username}/${jobId}/settings`, {
         method: "POST",
         body: JSON.stringify({ settings: { general, ga } }),
       });
-      if (!res.ok) throw new Error("Failed to save settings");
+      if (!res.ok) throw new Error(`Failed to save settings (${res.status})`);
+      const data = await res.json();
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to save settings");
+      }
+      onValidationChange?.(true);
+      toast.success("Settings saved");
     } catch (e) {
       onValidationChange?.(false);
+      toast.error(e instanceof Error ? e.message : "Failed to save settings");
     } finally {
       setSaving(false);
     }
@@ -535,6 +544,25 @@ export default function SettingsTab({
               onChange: (v: number) => setGa({ ...ga, numThreads: v }),
               step: 1,
             })}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              id="ga-deterministic"
+              type="checkbox"
+              checked={Boolean(ga.deterministic)}
+              onChange={(e) =>
+                setGa({ ...ga, deterministic: e.target.checked })
+              }
+              className="h-4 w-4 rounded border-slate-300 text-slate-900"
+            />
+            <label
+              htmlFor="ga-deterministic"
+              className="text-sm font-medium text-slate-600"
+              title="Use a fixed PRNG seed for reproducible runs"
+            >
+              Deterministic
+            </label>
           </div>
 
           {/* Operators */}
