@@ -94,13 +94,12 @@ export default function AppHeader() {
         </div>
 
         <nav className="flex items-center gap-3">
-          <button
+          <a
             className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-            type="button"
-            onClick={() => router.push("/jobs")}
+            href="/jobs"
           >
             Jobs
-          </button>
+          </a>
           <a
             className="rounded border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             href={`http://${server}/api/docs`}
