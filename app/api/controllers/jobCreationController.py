@@ -182,8 +182,6 @@ class JobCreationHelper:
         # while intentionally excluding run results.
         return {"ok": True, "descriptor": export_payload}
 
-    
-
     def get_job(self, username: str, job_id: str) -> Dict:
         job_dir = self._ensure_job_dir(username, job_id)
         descriptor = self._read_descriptor(job_dir)

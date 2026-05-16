@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useApp } from "@/context/AppContext";
 
 export default function LoginPage() {
-  const { server, setServer, login } = useApp();
+  const { server, setServer, login, isAuthenticated } = useApp();
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
+
+  useEffect(() => {
+    if (shouldRedirect && isAuthenticated) {
+      router.replace("/jobs");
+    }
+  }, [isAuthenticated, router, shouldRedirect]);
 
   const buildLoginUrl = () => {
     const base = server.trim().replace(/\/+$/, "");
@@ -48,7 +55,7 @@ export default function LoginPage() {
 
       login({ username: nextUsername, token });
       toast.success("Logged in");
-      router.replace("/jobs");
+      setShouldRedirect(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login failed");
     } finally {
