@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 import json
+from datetime import datetime
 
 from skopt import Optimizer
 
@@ -41,7 +42,7 @@ def load_instance_template(path: Path) -> InstanceTemplate:
 
 
 def build_optimizer() -> Tuple[Optimizer, List[str]]:
-    specs = build_search_space(include_deterministic=True)
+    specs = build_search_space()
     dimensions = [spec.dim for spec in specs]
     names = [spec.name for spec in specs]
     optimizer = Optimizer(
@@ -58,6 +59,7 @@ def materialize_job(
     template: InstanceTemplate,
     general: Dict[str, Any],
     ga: Dict[str, Any],
+    description: str | None = None,
 ) -> str:
     job_id = client.create_job()
 
@@ -82,6 +84,14 @@ def materialize_job(
     if calc:
         client.load_calc(job_id, calc)
 
+    if description:
+        # attach a human-readable description so server shows this was HPO-driven
+        try:
+            client.load_description(job_id, description)
+        except Exception:
+            # non-fatal: description is a nicety, don't fail the run for it
+            pass
+
     return job_id
 
 
@@ -95,16 +105,28 @@ def evaluate_candidate(
     client: ApiClient,
     templates: List[InstanceTemplate],
     sample: Dict[str, Any],
+    run_number: int,
+    log_path: Path,
 ) -> Tuple[float, str]:
     scores: List[float] = []
-    canonical_key = build_settings_key(sample)
+    template_ga = templates[0].descriptor.get("settings", {}).get("ga", {})
+    canonical_key = build_settings_key(sample, template_ga)
 
     for template in templates:
         job_id = None
         try:
             base_general = template.descriptor.get("settings", {}).get("general", {})
-            general, ga, _ = build_settings_payload(sample, base_general)
-            job_id = materialize_job(client, template, general, ga)
+            base_ga = template.descriptor.get("settings", {}).get("ga", {})
+            general, ga, _ = build_settings_payload(sample, base_general, base_ga)
+            desc = f"HPO#{run_number}"
+            job_id = materialize_job(client, template, general, ga, description=desc)
+            # Log the job creation and params
+            try:
+                with log_path.open("a", encoding="utf-8") as lf:
+                    lf.write(
+                        f"{datetime.utcnow().isoformat()} - Run {run_number} - template {template.path.name} - job {job_id} - params: {json.dumps(sample)}\n")
+            except Exception:
+                pass
             client.run_job(job_id)
             status = client.wait_for_run(
                 job_id, CONFIG.run_timeout_sec, CONFIG.poll_interval_sec
@@ -116,15 +138,33 @@ def evaluate_candidate(
             solution = result.get("solution")
             if solution is None:
                 raise ApiError("Result payload missing solution")
+            used_source = "solution"
+            try:
+                fitness = extract_fitness(solution, CONFIG.results_fitness_key)
+            except ValueError:
+                # Fallback to computed stats. Prefer optimized value to match server's reported optimized metric.
+                stats = client.get_results_stats(job_id)
+                overall = stats.get("overall", {})
+                if "optimized" in overall:
+                    fitness = float(overall["optimized"])
+                    used_source = "stats.optimized"
+                elif "delta" in overall:
+                    fitness = float(overall["delta"])
+                    used_source = "stats.delta"
+                else:
+                    raise ApiError(f"Unable to extract fitness from result or stats for job {job_id}")
 
-            fitness = extract_fitness(solution, CONFIG.results_fitness_key)
+            # Log the fitness value and source
+            try:
+                with log_path.open("a", encoding="utf-8") as lf:
+                    lf.write(
+                        f"{datetime.utcnow().isoformat()} - Run {run_number} - job {job_id} - fitness_source: {used_source} - fitness: {fitness}\n")
+            except Exception:
+                pass
             scores.append(fitness)
         finally:
-            if job_id:
-                try:
-                    client.delete_job(job_id)
-                except Exception:
-                    pass
+            # Do not delete jobs; keep them for later inspection.
+            pass
 
     if not scores:
         raise RuntimeError("No scores returned from evaluation")
@@ -147,6 +187,19 @@ def main() -> None:
 
     optimizer, names = build_optimizer()
 
+    # Prepare logging
+    hpo_dir = Path(__file__).resolve().parent
+    log_dir = hpo_dir / "log"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    logfile = datetime.utcnow().strftime("hpo_%Y%m%d_%H%M%S.txt")
+    log_path = log_dir / logfile
+    # initial header
+    try:
+        with log_path.open("a", encoding="utf-8") as lf:
+            lf.write(f"HPO started at {datetime.utcnow().isoformat()}\n")
+    except Exception:
+        pass
+
     best_score = None
     best_params = None
     seen_keys = set()
@@ -155,10 +208,11 @@ def main() -> None:
         sample = None
         point = None
         canonical_key = None
+        template_ga = templates[0].descriptor.get("settings", {}).get("ga", {})
         for _ in range(100):
             point = optimizer.ask()
             candidate = {name: value for name, value in zip(names, point)}
-            key = build_settings_key(candidate)
+            key = build_settings_key(candidate, template_ga)
             if key not in seen_keys:
                 sample = candidate
                 canonical_key = key
@@ -166,7 +220,7 @@ def main() -> None:
         if sample is None or canonical_key is None:
             raise RuntimeError("Unable to find a new unique configuration to evaluate")
 
-        score, canonical_key = evaluate_candidate(client, templates, sample)
+        score, canonical_key = evaluate_candidate(client, templates, sample, iteration + 1, log_path)
         seen_keys.add(canonical_key)
 
         objective = -score

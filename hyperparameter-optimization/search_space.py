@@ -15,7 +15,6 @@ class SpaceSpec:
 
 
 MUTATOR_BASE = ["RandomSimpleMutator"]
-MUTATOR_TYPES = MUTATOR_BASE + ["CompositeMutator"]
 
 CROSSOVER_BASE = [
     "GeometricColumnCrossover",
@@ -24,192 +23,231 @@ CROSSOVER_BASE = [
     "KSwitchCrossover",
     "ColumnKSwitchCrossover",
 ]
-CROSSOVER_TYPES = CROSSOVER_BASE + ["CompositeCrossover"]
 
 GENERATOR_BASE = [
     "AllSundaysHaveWorkGenerator",
     "RandomGenerator",
     "SeedingGenerator",
 ]
-GENERATOR_TYPES = GENERATOR_BASE + ["CompositeGenerator"]
 
 
-def build_search_space(include_deterministic: bool = True) -> List[SpaceSpec]:
+def build_search_space() -> List[SpaceSpec]:
+    """
+    Build the hyperparameter search space with ALL operator types in composites.
+    
+    Key design:
+    - Mutator: CompositeMutator with 2x RandomSimpleMutator (both with independent hyperparameters)
+    - Crossover: CompositeCrossover with ALL 5 crossover types (each with its own hyperparameters and weight)
+    - Generator: Fixed AllSundaysHaveWorkGenerator (only one available, no choice)
+    - Selection: TournamentSelection or RankSelection (hyperparameter)
+    
+    Fixed settings (from job template): numThreads, logger, deterministic, fitness, timelimit, stagnation
+    Goal: Include all types of mutators and crossovers in composites and optimize them together
+    with weights for each child operator.
+    
+    Total dimensions: 30 hyperparameters
+    Breakdown: General(2) + GA Base(4) + Mutator(7) + Crossover(15) + Selection(2) = 30
+    """
     specs: List[SpaceSpec] = [
+        # General settings (2)
         SpaceSpec("general_MAX_CLUSTER_DISTANCE", Real(1.0, 12.0)),
         SpaceSpec("general_MAX_CLUSTER_JOIN_DISTANCE", Real(2.0, 20.0)),
+
+        # GA base parameters (4) - numThreads now comes from job template
         SpaceSpec("populationSize", Integer(40, 300)),
         SpaceSpec("generations", Integer(500, 8000)),
         SpaceSpec("newChromosomes", Integer(1, 8)),
         SpaceSpec("elitism", Integer(1, 20)),
-        SpaceSpec("numThreads", Integer(1, 8)),
-        SpaceSpec("mutator_type", Categorical(MUTATOR_TYPES)),
-        SpaceSpec("mutator_numMutations", Integer(1, 10)),
-        SpaceSpec("mutator_p", Real(0.1, 0.9)),
+
+        # MUTATOR: CompositeMutator with 2x RandomSimpleMutator (7)
+        # Both children are RandomSimpleMutator with independent hyperparameters
         SpaceSpec("mutator_comp_p", Real(0.1, 1.0)),
-        SpaceSpec("mutator_child1_type", Categorical(MUTATOR_BASE)),
         SpaceSpec("mutator_child1_numMutations", Integer(1, 10)),
         SpaceSpec("mutator_child1_p", Real(0.1, 0.9)),
         SpaceSpec("mutator_child1_weight", Real(0.1, 1.0)),
-        SpaceSpec("mutator_child2_type", Categorical(MUTATOR_BASE)),
         SpaceSpec("mutator_child2_numMutations", Integer(1, 10)),
         SpaceSpec("mutator_child2_p", Real(0.1, 0.9)),
         SpaceSpec("mutator_child2_weight", Real(0.1, 1.0)),
-        SpaceSpec(
-            "crossover_type",
-            Categorical(CROSSOVER_TYPES),
-        ),
-        SpaceSpec("crossover_geoP", Real(0.1, 0.8)),
-        SpaceSpec("crossover_crossoverProb", Real(0.1, 0.95)),
-        SpaceSpec("crossover_k", Integer(2, 8)),
-        SpaceSpec("crossover_p", Real(0.1, 0.9)),
+
+        # CROSSOVER: CompositeCrossover with ALL 5 base crossovers (15)
         SpaceSpec("crossover_comp_p", Real(0.1, 1.0)),
-        SpaceSpec("crossover_child1_type", Categorical(CROSSOVER_BASE)),
+
+        # GeometricColumnCrossover (child1)
         SpaceSpec("crossover_child1_geoP", Real(0.1, 0.8)),
         SpaceSpec("crossover_child1_crossoverProb", Real(0.1, 0.95)),
-        SpaceSpec("crossover_child1_k", Integer(2, 8)),
-        SpaceSpec("crossover_child1_p", Real(0.1, 0.9)),
         SpaceSpec("crossover_child1_weight", Real(0.1, 1.0)),
-        SpaceSpec("crossover_child2_type", Categorical(CROSSOVER_BASE)),
+
+        # GeometricRowCrossover (child2)
         SpaceSpec("crossover_child2_geoP", Real(0.1, 0.8)),
         SpaceSpec("crossover_child2_crossoverProb", Real(0.1, 0.95)),
-        SpaceSpec("crossover_child2_k", Integer(2, 8)),
-        SpaceSpec("crossover_child2_p", Real(0.1, 0.9)),
         SpaceSpec("crossover_child2_weight", Real(0.1, 1.0)),
+
+        # SinglePointCrossover (child3)
+        SpaceSpec("crossover_child3_p", Real(0.1, 0.9)),
+        SpaceSpec("crossover_child3_weight", Real(0.1, 1.0)),
+
+        # KSwitchCrossover (child4)
+        SpaceSpec("crossover_child4_k", Integer(2, 8)),
+        SpaceSpec("crossover_child4_p", Real(0.1, 0.9)),
+        SpaceSpec("crossover_child4_weight", Real(0.1, 1.0)),
+
+        # ColumnKSwitchCrossover (child5)
+        SpaceSpec("crossover_child5_k", Integer(2, 8)),
+        SpaceSpec("crossover_child5_p", Real(0.1, 0.9)),
+        SpaceSpec("crossover_child5_weight", Real(0.1, 1.0)),
+
+        # GENERATOR: Fixed AllSundaysHaveWorkGenerator (no hyperparameters)
+        # Only one generator available, so no choice or weights to tune
+
+        # Selection (2) - fitness, logger, deterministic, numThreads come from job template
         SpaceSpec("selection_type", Categorical(["TournamentSelection", "RankSelection"])),
         SpaceSpec("selection_tournamentSize", Integer(2, 6)),
-        SpaceSpec("fitness_type", Categorical(["FastIntersectUnionFitness", "CorrectFitness"])),
-        SpaceSpec(
-            "generator_type",
-            Categorical(GENERATOR_TYPES),
-        ),
-        SpaceSpec("generator_child1_type", Categorical(GENERATOR_BASE)),
-        SpaceSpec("generator_child1_weight", Real(0.1, 1.0)),
-        SpaceSpec("generator_child2_type", Categorical(GENERATOR_BASE)),
-        SpaceSpec("generator_child2_weight", Real(0.1, 1.0)),
-        SpaceSpec("logger_type", Categorical(["SoutLogger"])),
     ]
-
-    if include_deterministic:
-        specs.append(SpaceSpec("deterministic", Categorical([True, False])))
 
     return specs
 
 
-def build_mutator_child(sample: Dict[str, Any], prefix: str) -> Dict[str, Any]:
-    child_type = sample[f"{prefix}_type"]
-    params: Dict[str, Any] = {}
-    if child_type == "RandomSimpleMutator":
-        params = {
-            "numMutations": int(sample[f"{prefix}_numMutations"]),
-            "p": float(sample[f"{prefix}_p"]),
-        }
+def build_mutator_child(sample: Dict[str, Any], child_num: int) -> Dict[str, Any]:
+    """
+    Build a mutator child. Both children are always RandomSimpleMutator.
+    child_num: 1 or 2
+    """
+    prefix = f"mutator_child{child_num}"
+    params = {
+        "numMutations": int(sample[f"{prefix}_numMutations"]),
+        "p": float(sample[f"{prefix}_p"]),
+    }
     return {
-        "type": child_type,
+        "type": "RandomSimpleMutator",
         "params": params,
         "weight": float(sample[f"{prefix}_weight"]),
     }
 
 
-def build_crossover_child(sample: Dict[str, Any], prefix: str) -> Dict[str, Any]:
-    child_type = sample[f"{prefix}_type"]
-    params: Dict[str, Any] = {}
-    if child_type in {"GeometricColumnCrossover", "GeometricRowCrossover"}:
+def build_crossover_child(sample: Dict[str, Any], child_num: int) -> Dict[str, Any]:
+    """
+    Build one crossover child from the fixed five-child composite.
+    """
+    if child_num == 1:
         params = {
-            "geoP": float(sample[f"{prefix}_geoP"]),
-            "crossoverProb": float(sample[f"{prefix}_crossoverProb"]),
+            "geoP": float(sample["crossover_child1_geoP"]),
+            "crossoverProb": float(sample["crossover_child1_crossoverProb"]),
         }
-    elif child_type in {"KSwitchCrossover", "ColumnKSwitchCrossover"}:
+        return {
+            "type": "GeometricColumnCrossover",
+            "params": params,
+            "weight": float(sample["crossover_child1_weight"]),
+        }
+    if child_num == 2:
         params = {
-            "k": int(sample[f"{prefix}_k"]),
-            "p": float(sample[f"{prefix}_p"]),
+            "geoP": float(sample["crossover_child2_geoP"]),
+            "crossoverProb": float(sample["crossover_child2_crossoverProb"]),
         }
-    elif child_type == "SinglePointCrossover":
-        params = {"p": float(sample[f"{prefix}_p"])}
+        return {
+            "type": "GeometricRowCrossover",
+            "params": params,
+            "weight": float(sample["crossover_child2_weight"]),
+        }
+    if child_num == 3:
+        params = {
+            "p": float(sample["crossover_child3_p"]),
+        }
+        return {
+            "type": "SinglePointCrossover",
+            "params": params,
+            "weight": float(sample["crossover_child3_weight"]),
+        }
+    if child_num == 4:
+        params = {
+            "k": int(sample["crossover_child4_k"]),
+            "p": float(sample["crossover_child4_p"]),
+        }
+        return {
+            "type": "KSwitchCrossover",
+            "params": params,
+            "weight": float(sample["crossover_child4_weight"]),
+        }
+    params = {
+        "k": int(sample["crossover_child5_k"]),
+        "p": float(sample["crossover_child5_p"]),
+    }
     return {
-        "type": child_type,
+        "type": "ColumnKSwitchCrossover",
         "params": params,
-        "weight": float(sample[f"{prefix}_weight"]),
+        "weight": float(sample["crossover_child5_weight"]),
     }
 
 
-def build_generator_child(sample: Dict[str, Any], prefix: str) -> Dict[str, Any]:
+def build_generator_child(sample: Dict[str, Any], child_num: int) -> Dict[str, Any]:
+    """
+    Build the fixed generator used by the search space.
+    """
     return {
-        "type": sample[f"{prefix}_type"],
+        "type": "AllSundaysHaveWorkGenerator",
         "params": {},
-        "weight": float(sample[f"{prefix}_weight"]),
     }
 
 
-def build_ga_settings(sample: Dict[str, Any]) -> Dict[str, Any]:
-    mutator_type = sample["mutator_type"]
-    if mutator_type == "CompositeMutator":
-        mutator_params = {
-            "p": float(sample["mutator_comp_p"]),
-            "children": [
-                build_mutator_child(sample, "mutator_child1"),
-                build_mutator_child(sample, "mutator_child2"),
-            ],
-        }
-    else:
-        mutator_params = {
-            "numMutations": int(sample["mutator_numMutations"]),
-            "p": float(sample["mutator_p"]),
-        }
+def build_ga_settings(sample: Dict[str, Any], template: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Build GA settings with all operators included in composites, merged with template settings.
+    
+    Args:
+        sample: Sampled hyperparameters (GA base, mutator, crossover, selection)
+        template: Fixed settings from job template (numThreads, fitness, logger, deterministic, timelimit, stagnationFraction)
+    
+    Stagnation is calculated as: int(template["stagnationFraction"] * sample["generations"])
+    """
+    # MUTATOR: Always composite with 2x RandomSimpleMutator
+    mutator_params = {
+        "p": float(sample["mutator_comp_p"]),
+        "children": [
+            build_mutator_child(sample, 1),
+            build_mutator_child(sample, 2),
+        ],
+    }
 
-    crossover_type = sample["crossover_type"]
-    if crossover_type == "CompositeCrossover":
-        crossover_params = {
-            "p": float(sample["crossover_comp_p"]),
-            "children": [
-                build_crossover_child(sample, "crossover_child1"),
-                build_crossover_child(sample, "crossover_child2"),
-            ],
-        }
-    else:
-        crossover_params: Dict[str, Any] = {}
-        if crossover_type in {"GeometricColumnCrossover", "GeometricRowCrossover"}:
-            crossover_params = {
-                "geoP": float(sample["crossover_geoP"]),
-                "crossoverProb": float(sample["crossover_crossoverProb"]),
-            }
-        elif crossover_type in {"KSwitchCrossover", "ColumnKSwitchCrossover"}:
-            crossover_params = {
-                "k": int(sample["crossover_k"]),
-                "p": float(sample["crossover_p"]),
-            }
-        elif crossover_type == "SinglePointCrossover":
-            crossover_params = {"p": float(sample["crossover_p"])}
+    # CROSSOVER: Always composite with ALL 5 crossover types
+    crossover_params = {
+        "p": float(sample["crossover_comp_p"]),
+        "children": [
+            build_crossover_child(sample, 1),
+            build_crossover_child(sample, 2),
+            build_crossover_child(sample, 3),
+            build_crossover_child(sample, 4),
+            build_crossover_child(sample, 5),
+        ],
+    }
 
+    # SELECTION
     selection_type = sample["selection_type"]
     selection_params: Dict[str, Any] = {}
     if selection_type == "TournamentSelection":
         selection_params = {"tournamentSize": int(sample["selection_tournamentSize"])}
 
-    generator_type = sample["generator_type"]
-    if generator_type == "CompositeGenerator":
-        generator_params = {
-            "children": [
-                build_generator_child(sample, "generator_child1"),
-                build_generator_child(sample, "generator_child2"),
-            ]
-        }
-    else:
-        generator_params = {}
+    # GENERATOR: Fixed AllSundaysHaveWorkGenerator (no hyperparameters)
+    generator = build_generator_child(sample, 1)
+
+    # Calculate stagnation based on generations and template stagnation fraction
+    generations = int(sample["generations"])
+    stagnation_fraction = float(template.get("stagnationFraction", 0.2))
+    stagnation = int(stagnation_fraction * generations)
 
     ga = {
         "populationSize": int(sample["populationSize"]),
-        "generations": int(sample["generations"]),
+        "generations": generations,
         "newChromosomes": int(sample["newChromosomes"]),
         "elitism": int(sample["elitism"]),
-        "numThreads": int(sample["numThreads"]),
-        "deterministic": bool(sample.get("deterministic", True)),
-        "mutator": {"type": mutator_type, "params": mutator_params},
-        "crossover": {"type": crossover_type, "params": crossover_params},
+        "numThreads": int(template.get("numThreads", 4)),
+        "deterministic": bool(template.get("deterministic", False)),
+        "mutator": {"type": "CompositeMutator", "params": mutator_params},
+        "crossover": {"type": "CompositeCrossover", "params": crossover_params},
         "selection": {"type": selection_type, "params": selection_params},
-        "fitness": {"type": sample["fitness_type"], "params": {}},
-        "generator": {"type": generator_type, "params": generator_params},
-        "logger": {"type": sample["logger_type"], "params": {}},
+        "fitness": {"type": template.get("fitness", "FastIntersectUnionFitness"), "params": {}},
+        "generator": generator,
+        "logger": {"type": template.get("logger", "SoutLogger"), "params": {}},
+        "timelimit": int(template.get("timelimit", 3600)),
+        "stagnation": stagnation,
     }
 
     return ga
@@ -222,15 +260,22 @@ def build_general_settings(sample: Dict[str, Any], base_general: Dict[str, Any])
     return general
 
 
-def build_settings_payload(sample: Dict[str, Any], base_general: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
+def build_settings_payload(sample: Dict[str, Any], base_general: Dict[str, Any], template: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
+    """Build settings payload by merging sampled hyperparameters with template settings.
+    
+    Args:
+        sample: Sampled hyperparameters
+        base_general: Base general settings (clustering distances, etc.)
+        template: Fixed settings from job template
+    """
     general = build_general_settings(sample, base_general)
-    ga = build_ga_settings(sample)
+    ga = build_ga_settings(sample, template)
     key = json.dumps({"general": general, "ga": ga}, sort_keys=True, separators=(",", ":"))
     return general, ga, key
 
 
-def build_settings_key(sample: Dict[str, Any]) -> str:
-    general, ga, _ = build_settings_payload(sample, {})
+def build_settings_key(sample: Dict[str, Any], template: Dict[str, Any]) -> str:
+    general, ga, _ = build_settings_payload(sample, {}, template)
     normalized = {
         "general": general,
         "ga": normalize_ga_for_key(ga),

@@ -48,7 +48,7 @@ class ApiClient:
             headers=self._headers(),
             timeout=30,
         )
-        if res.status_code != 200:
+        if res.status_code not in {200, 201}:
             raise ApiError(f"Job init failed ({res.status_code}): {res.text}")
         data = res.json()
         if not data.get("success"):
@@ -107,6 +107,16 @@ class ApiClient:
         )
         self._expect_success(res, "calc")
 
+    def load_description(self, job_id: str, description: str | None) -> None:
+        payload = {"description": description}
+        res = requests.post(
+            f"{self.base_url}/api/job/{self.username}/{job_id}/description",
+            json=payload,
+            headers=self._headers(),
+            timeout=30,
+        )
+        self._expect_success(res, "description")
+
     def run_job(self, job_id: str) -> None:
         res = requests.post(
             f"{self.base_url}/api/job/{self.username}/{job_id}/run",
@@ -148,6 +158,25 @@ class ApiClient:
         data = res.json()
         if not data.get("success"):
             raise ApiError(f"Result fetch failed: {data.get('error')}")
+        return data.get("data", {})
+
+    def get_results_stats(self, job_id: str, random_name: str = None, opt_name: str = None) -> Dict[str, Any]:
+        params = {}
+        if random_name:
+            params["random"] = random_name
+        if opt_name:
+            params["optimized"] = opt_name
+        res = requests.get(
+            f"{self.base_url}/api/job/{self.username}/{job_id}/results/stats",
+            headers=self._headers(),
+            params=params if params else None,
+            timeout=60,
+        )
+        if res.status_code != 200:
+            raise ApiError(f"Result stats fetch failed ({res.status_code}): {res.text}")
+        data = res.json()
+        if not data.get("success"):
+            raise ApiError(f"Result stats fetch failed: {data.get('error')}")
         return data.get("data", {})
 
     def wait_for_run(self, job_id: str, timeout_sec: float, poll_interval_sec: float) -> RunStatus:

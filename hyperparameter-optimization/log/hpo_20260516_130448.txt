@@ -1,0 +1,4 @@
+HPO started at 2026-05-16T13:04:48.403377
+2026-05-16T13:05:02.658088 - Run 1 - job 5e4a8cbe-9bea-4d2d-ac07-ed9fbd2105ba - fitness_source: stats.optimized - fitness: 20.972643723401138
+2026-05-16T13:05:08.849425 - Run 2 - job aac502da-5ff3-4bb1-8535-56c541d70251 - fitness_source: stats.optimized - fitness: 19.993746202695164
+2026-05-16T13:05:31.113310 - Run 3 - job 8dea847c-75d2-4492-9cc4-bf7d08cf4b21 - fitness_source: stats.optimized - fitness: 20.616469897188455
