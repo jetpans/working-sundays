@@ -367,6 +367,8 @@ export default function SettingsTab({
         elitism: 5,
         numThreads: 4,
         deterministic: true,
+        timelimit: 3600,
+        stagnationFraction: 0.2,
         mutator: {
           type: "CompositeMutator",
           params: { p: 1, weights: [1], children: [] },
@@ -401,6 +403,8 @@ export default function SettingsTab({
       ga.elitism !== undefined &&
       ga.numThreads !== undefined &&
       ga.deterministic !== undefined &&
+      ga.timelimit !== undefined &&
+      ga.stagnationFraction !== undefined &&
       !!ga.mutator?.type &&
       !!ga.crossover?.type &&
       !!ga.selection?.type &&
@@ -566,6 +570,41 @@ export default function SettingsTab({
             >
               Deterministic
             </label>
+          </div>
+
+          <div>
+            <label
+              title="Maximum time (seconds) the GA can run before stopping gracefully"
+              className="block text-sm font-medium text-slate-600"
+            >
+              Time Limit (seconds)
+            </label>
+            {numberInput({
+              value: ga.timelimit,
+              onChange: (v: number) => setGa({ ...ga, timelimit: v }),
+              step: 1,
+            })}
+          </div>
+
+          <div>
+            <label
+              title="Stop if no improvement for this fraction of generations (e.g., 0.2 = 20% of total generations)"
+              className="block text-sm font-medium text-slate-600"
+            >
+              Stagnation Fraction
+            </label>
+            {numberInput({
+              value: ga.stagnationFraction,
+              onChange: (v: number) => setGa({ ...ga, stagnationFraction: v }),
+              step: 0.01,
+            })}
+            <p className="text-xs text-slate-500 mt-1">
+              Stop if no improvement for ~
+              {Math.floor(
+                (ga.stagnationFraction || 0.2) * (ga.generations || 5000),
+              )}{" "}
+              generations
+            </p>
           </div>
 
           {/* Operators */}

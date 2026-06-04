@@ -16,12 +16,30 @@ public class DemoAlgorithm<T extends Chromosome> {
     }
 
     public List<T> run() {
+        int startTime = (int) (System.currentTimeMillis() / 1000);
+        int stagnation = 0;
         List<T> population = s.generator.generateMany(s.populationSize); // New Population
         T alpha = null;
         population.forEach(chromosome -> chromosome.fitness = s.fitness.evaluate(chromosome)); // Give them fitness
         boolean lastWasAlpha = false;
         population.sort(Comparator.comparingDouble(a -> a.fitness)); // Order the first generation
+
         for (int iteration = 0; iteration < s.generations + 1; iteration++) { // Do an iteration
+
+            if ((int) (System.currentTimeMillis() / 1000) - startTime >= s.timelimit) { // Check time limit
+                s.logger.println(LogLevel.VERBOSE, "\nTime limit reached. Stopping...");
+                break;
+            }
+            if (population.getLast().fitness <= (alpha != null ? alpha.fitness : Double.NEGATIVE_INFINITY)) { // Update stagnation
+                stagnation++;
+            } else {
+                stagnation = 0;
+            }
+            if (stagnation >= s.stagnation) { // Check stagnation
+                s.logger.println(LogLevel.VERBOSE, "\nStagnation limit reached. Stopping...");
+                break;
+            }
+
             List<T> nextPopulation = new ArrayList<>(population.subList(population.size() - s.elitism, population.size())); // Elite chromosomes survive
             while (nextPopulation.size() < s.populationSize - s.newChromosomes) { // Fill next population with children
                 List<T> tempParents = s.selection.select(population); // Choose two parents.

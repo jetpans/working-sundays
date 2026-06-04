@@ -47,7 +47,6 @@ socketio = SocketIO(app, cors_allowed_origins=allowed_origins, async_mode="geven
 setup_swagger(app)
 
 AppConfig.RUNS_DIR.mkdir(parents=True, exist_ok=True)
-AppConfig.LEGACY_RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @app.route("/")

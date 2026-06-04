@@ -17,7 +17,6 @@ class AppConfig:
 
     WORKSPACE_ROOT = Path(os.getenv("WORKSPACE_ROOT", str(REPO_ROOT))).resolve()
     RUNS_DIR = Path(os.getenv("RUNS_DIR", str(APP_DIR / "jobs"))).resolve()
-    LEGACY_RUNS_DIR = Path(os.getenv("LEGACY_RUNS_DIR", str(APP_DIR / "runs"))).resolve()
     AUTH_DIR = Path(os.getenv("AUTH_DIR", str(APP_DIR / "auth"))).resolve()
     AUTH_USERS_FILE = Path(os.getenv("AUTH_USERS_FILE", str(AUTH_DIR / "users.json"))).resolve()
     AUTH_JWT_SECRET_FILE = Path(

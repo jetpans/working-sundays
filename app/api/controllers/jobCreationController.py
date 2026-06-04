@@ -44,7 +44,6 @@ class JobCreationHelper:
     def __init__(self) -> None:
         self.base = AppConfig.RUNS_DIR
         self.base.mkdir(parents=True, exist_ok=True)
-        AppConfig.LEGACY_RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
     def create_job(self, username: str, initial_descriptor: Dict | None = None) -> Dict:
         job_id = str(uuid.uuid4())
@@ -189,23 +188,15 @@ class JobCreationHelper:
 
     def list_job_ids(self, username: str) -> list[str]:
         job_ids = set()
-        for base_dir in (AppConfig.RUNS_DIR, AppConfig.LEGACY_RUNS_DIR):
-            user_dir = base_dir / username
-            if not user_dir.exists():
-                continue
+        user_dir = AppConfig.RUNS_DIR / username
+        if user_dir.exists():
             for entry in user_dir.iterdir():
                 if entry.is_dir():
                     job_ids.add(entry.name)
         return sorted(job_ids)
 
     def resolve_job_dir(self, username: str, job_id: str) -> Path:
-        job_dir = self._job_dir(username, job_id)
-        if job_dir.exists():
-            return job_dir
-        legacy_job_dir = AppConfig.LEGACY_RUNS_DIR / username / job_id
-        if legacy_job_dir.exists():
-            return legacy_job_dir
-        return job_dir
+        return self._job_dir(username, job_id)
 
     def _job_dir(self, username: str, job_id: str) -> Path:
         return self.base / username / job_id

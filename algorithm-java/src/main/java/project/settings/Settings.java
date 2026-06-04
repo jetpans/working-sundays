@@ -47,6 +47,8 @@ public abstract class Settings<T extends Chromosome> {
     public int elitism;
     public int numThreads = 4;
     public boolean deterministic = true;
+    public int timelimit = 3600;  // seconds
+    public int stagnation = 1000; // generations with no improvement
 
     public Mutator<T> mutator;
     public Crossover<T> crossover;
@@ -80,6 +82,8 @@ public abstract class Settings<T extends Chromosome> {
             copy.elitism = other.elitism;
             copy.numThreads = other.numThreads;
             copy.deterministic = other.deterministic;
+            copy.timelimit = other.timelimit;
+            copy.stagnation = other.stagnation;
             copy.mutator = other.mutator;
             copy.crossover = other.crossover;
             copy.selection = other.selection;
@@ -115,6 +119,8 @@ public abstract class Settings<T extends Chromosome> {
             settings.elitism = getInt(ga, "elitism", settings.elitism);
             settings.numThreads = getInt(ga, "numThreads", settings.numThreads);
             settings.deterministic = getBoolean(ga, "deterministic", settings.deterministic);
+            settings.timelimit = getInt(ga, "timelimit", settings.timelimit);
+            settings.stagnation = getInt(ga, "stagnation", settings.stagnation);
 
             settings.mutator = buildMutator(getObject(ga, "mutator"), settings.mutator);
             settings.crossover = buildCrossover(getObject(ga, "crossover"), settings.crossover);
