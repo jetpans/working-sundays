@@ -45,8 +45,8 @@ def build_search_space() -> List[SpaceSpec]:
     Goal: Include all types of mutators and crossovers in composites and optimize them together
     with weights for each child operator.
     
-    Total dimensions: 30 hyperparameters
-    Breakdown: General(2) + GA Base(4) + Mutator(7) + Crossover(15) + Selection(2) = 30
+    Total dimensions: 34 hyperparameters
+    Breakdown: General(2) + GA Base(4) + Eliminator(4) + Mutator(7) + Crossover(15) + Selection(2) = 34
     """
     specs: List[SpaceSpec] = [
         # General settings (2)
@@ -57,7 +57,12 @@ def build_search_space() -> List[SpaceSpec]:
         SpaceSpec("populationSize", Integer(40, 300)),
         SpaceSpec("generations", Integer(500, 8000)),
         SpaceSpec("newChromosomes", Integer(1, 8)),
-        SpaceSpec("elitism", Integer(1, 20)),
+
+        # ELIMINATOR: choose elimination strategy and its params (3)
+        SpaceSpec("eliminator_type", Categorical(["EliteEliminator", "EliteGeometricEliminator"])),
+        SpaceSpec("eliminator_elitism", Integer(1, 20)),
+        SpaceSpec("eliminator_survivalRate", Real(0.05, 0.5)),
+        SpaceSpec("eliminator_p", Real(0.1, 0.95)),
 
         # MUTATOR: CompositeMutator with 2x RandomSimpleMutator (7)
         # Both children are RandomSimpleMutator with independent hyperparameters
@@ -188,6 +193,25 @@ def build_generator_child(sample: Dict[str, Any], child_num: int) -> Dict[str, A
     }
 
 
+def build_eliminator(sample: Dict[str, Any]) -> Dict[str, Any]:
+    eliminator_type = sample["eliminator_type"]
+    if eliminator_type == "EliteEliminator":
+        return {
+            "type": "EliteEliminator",
+            "params": {
+                "elitism": int(sample["eliminator_elitism"]),
+            },
+        }
+
+    return {
+        "type": "EliteGeometricEliminator",
+        "params": {
+            "survivalRate": float(sample["eliminator_survivalRate"]),
+            "p": float(sample["eliminator_p"]),
+        },
+    }
+
+
 def build_ga_settings(sample: Dict[str, Any], template: Dict[str, Any]) -> Dict[str, Any]:
     """
     Build GA settings with all operators included in composites, merged with template settings.
@@ -237,9 +261,9 @@ def build_ga_settings(sample: Dict[str, Any], template: Dict[str, Any]) -> Dict[
         "populationSize": int(sample["populationSize"]),
         "generations": generations,
         "newChromosomes": int(sample["newChromosomes"]),
-        "elitism": int(sample["elitism"]),
         "numThreads": int(template.get("numThreads", 4)),
         "deterministic": bool(template.get("deterministic", False)),
+        "eliminator": build_eliminator(sample),
         "mutator": {"type": "CompositeMutator", "params": mutator_params},
         "crossover": {"type": "CompositeCrossover", "params": crossover_params},
         "selection": {"type": selection_type, "params": selection_params},

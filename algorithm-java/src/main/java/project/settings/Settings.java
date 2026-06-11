@@ -6,21 +6,14 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import project.genetic.chromosome.Chromosome;
 import project.genetic.chromosome.MatrixChromosome;
-import project.genetic.crossover.ColumnKSwitchCrossover;
-import project.genetic.crossover.CompositeCrossover;
-import project.genetic.crossover.Crossover;
-import project.genetic.crossover.GeometricColumnCrossover;
-import project.genetic.crossover.GeometricRowCrossover;
-import project.genetic.crossover.KSwitchCrossover;
-import project.genetic.crossover.SinglePointCrossover;
+import project.genetic.crossover.*;
+import project.genetic.eliminator.EliteEliminator;
+import project.genetic.eliminator.EliteGeometricEliminator;
+import project.genetic.eliminator.Eliminator;
 import project.genetic.fitness.CorrectFitness;
 import project.genetic.fitness.FastIntersectUnionFitness;
 import project.genetic.fitness.Fitness;
-import project.genetic.generator.AllSundaysHaveWorkGenerator;
-import project.genetic.generator.CompositeGenerator;
-import project.genetic.generator.Generator;
-import project.genetic.generator.RandomGenerator;
-import project.genetic.generator.SeedingGenerator;
+import project.genetic.generator.*;
 import project.genetic.logger.Logger;
 import project.genetic.logger.SoutLogger;
 import project.genetic.mutator.CompositeMutator;
@@ -44,7 +37,6 @@ public abstract class Settings<T extends Chromosome> {
     public int populationSize;
     public int generations;
     public int newChromosomes;
-    public int elitism;
     public int numThreads = 4;
     public boolean deterministic = true;
     public int timelimit = 3600;  // seconds
@@ -53,6 +45,7 @@ public abstract class Settings<T extends Chromosome> {
     public Mutator<T> mutator;
     public Crossover<T> crossover;
     public Selection selection;
+    public Eliminator eliminator;
     public Fitness<T> fitness;
     public Generator<T> generator;
     public Logger logger = new SoutLogger();
@@ -79,7 +72,6 @@ public abstract class Settings<T extends Chromosome> {
             copy.populationSize = other.populationSize;
             copy.generations = other.generations;
             copy.newChromosomes = other.newChromosomes;
-            copy.elitism = other.elitism;
             copy.numThreads = other.numThreads;
             copy.deterministic = other.deterministic;
             copy.timelimit = other.timelimit;
@@ -87,6 +79,7 @@ public abstract class Settings<T extends Chromosome> {
             copy.mutator = other.mutator;
             copy.crossover = other.crossover;
             copy.selection = other.selection;
+            copy.eliminator = other.eliminator;
             copy.fitness = other.fitness;
             copy.generator = other.generator;
             copy.logger = other.logger;
@@ -116,7 +109,6 @@ public abstract class Settings<T extends Chromosome> {
             settings.populationSize = getInt(ga, "populationSize", settings.populationSize);
             settings.generations = getInt(ga, "generations", settings.generations);
             settings.newChromosomes = getInt(ga, "newChromosomes", settings.newChromosomes);
-            settings.elitism = getInt(ga, "elitism", settings.elitism);
             settings.numThreads = getInt(ga, "numThreads", settings.numThreads);
             settings.deterministic = getBoolean(ga, "deterministic", settings.deterministic);
             settings.timelimit = getInt(ga, "timelimit", settings.timelimit);
@@ -125,6 +117,7 @@ public abstract class Settings<T extends Chromosome> {
             settings.mutator = buildMutator(getObject(ga, "mutator"), settings.mutator);
             settings.crossover = buildCrossover(getObject(ga, "crossover"), settings.crossover);
             settings.selection = buildSelection(getObject(ga, "selection"), settings.selection);
+            settings.eliminator = buildEliminator(getObject(ga, "eliminator"), settings.eliminator);
             settings.fitness = buildFitness(getObject(ga, "fitness"), settings.fitness);
             settings.generator = buildGenerator(getObject(ga, "generator"), settings.generator);
             settings.logger = buildLogger(getObject(ga, "logger"), settings.logger);
@@ -244,6 +237,25 @@ public abstract class Settings<T extends Chromosome> {
 
         if ("RankSelection".equals(type)) {
             return new RankSelection();
+        }
+
+        return fallback;
+    }
+
+    private static Eliminator buildEliminator(JsonObject obj, Eliminator fallback) {
+        if (obj == null) return fallback;
+        String type = getString(obj, "type", "");
+        JsonObject params = getObject(obj, "params");
+
+        if ("EliteEliminator".equals(type)) {
+            int elitism = getInt(params, "elitism", 5);
+            return new EliteEliminator(elitism);
+        }
+
+        if ("EliteGeometricEliminator".equals(type)) {
+            double survivalRate = getDouble(params, "survivalRate", 0.2);
+            double p = getDouble(params, "p", 0.5);
+            return new EliteGeometricEliminator(survivalRate, p);
         }
 
         return fallback;

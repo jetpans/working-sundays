@@ -80,4 +80,10 @@ public class Util {
         }
         return clusters;
     }
+
+    public static int randomGeometric(int max, double p, Random r) {
+        double d = r.nextDouble();
+        int result = (int) Math.floor(Math.log(1.0 - d) / Math.log(1.0 - p));
+        return Math.min(result, max);
+    }
 }

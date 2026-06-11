@@ -8,7 +8,7 @@ The search space now **ALWAYS uses fixed composite operators** with specific typ
 - **Crossover**: CompositeCrossover(GeometricColumnCrossover, KSwitchCrossover)
 - **Generator**: CompositeGenerator(RandomGenerator, SeedingGenerator)
 
-This eliminates wasted categorical dimensions and reduces the search space from 48 to **27 hyperparameters** (28 with deterministic flag).
+This eliminates wasted categorical dimensions and reduces the search space from 52 to **31 hyperparameters** (32 with deterministic flag).
 
 ---
 
@@ -22,12 +22,17 @@ This eliminates wasted categorical dimensions and reduces the search space from 
 - `general_MAX_CLUSTER_DISTANCE`: Real [1.0, 12.0]
 - `general_MAX_CLUSTER_JOIN_DISTANCE`: Real [2.0, 20.0]
 
-### GA Base Parameters (5)
+### GA Base Parameters (4)
 - `populationSize`: Integer [40, 300]
 - `generations`: Integer [500, 8000]
 - `newChromosomes`: Integer [1, 8]
-- `elitism`: Integer [1, 20]
 - `numThreads`: Integer [1, 8]
+
+### Eliminator Parameters (4)
+- `eliminator_type`: Categorical ["EliteEliminator", "EliteGeometricEliminator"]
+- `eliminator_elitism`: Integer [1, 20]
+- `eliminator_survivalRate`: Real [0.05, 0.5]
+- `eliminator_p`: Real [0.1, 0.95]
 
 ### MUTATOR (7) - **ALWAYS CompositeMutator with 2x RandomSimpleMutator**
 ```
@@ -148,16 +153,17 @@ CompositeGenerator(
 | Category | Count | Details |
 |----------|-------|---------|
 | General Settings | 2 | MAX_CLUSTER_DISTANCE, MAX_CLUSTER_JOIN_DISTANCE |
-| GA Base Params | 5 | populationSize, generations, newChromosomes, elitism, numThreads |
+| GA Base Params | 4 | populationSize, generations, newChromosomes, numThreads |
+| Eliminator | 4 | eliminator_type, eliminator_elitism, eliminator_survivalRate, eliminator_p |
 | Mutator | 7 | comp_p + 2×(child: numMutations, p, weight) |
 | Crossover | 7 | comp_p + child1(geoP, crossoverProb, weight) + child2(k, p, weight) |
 | Generator | 2 | 2× weight only (types are fixed) |
 | Selection | 2 | type (TournamentSelection or RankSelection) + tournamentSize |
 | Fitness | 1 | type (FastIntersectUnionFitness or CorrectFitness) |
 | Logger | 1 | type (SoutLogger) |
-| **Total** | **27** | All non-optional |
+| **Total** | **31** | All non-optional |
 | Optional | 1 | deterministic (True/False) |
-| **Total with deterministic** | **28** | |
+| **Total with deterministic** | **32** | |
 
 ---
 
@@ -177,13 +183,18 @@ CompositeGenerator(
 
 ## Example Generated Configuration
 
-Given a sample from 27 dimensions:
+Given a sample from 31 dimensions:
 ```json
 {
   "populationSize": 150,
   "generations": 3000,
   "newChromosomes": 4,
-  "elitism": 10,
+  "eliminator": {
+    "type": "EliteEliminator",
+    "params": {
+      "elitism": 10
+    }
+  },
   "numThreads": 4,
   
   "mutator": {

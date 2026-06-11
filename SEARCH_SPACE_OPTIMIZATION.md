@@ -2,9 +2,9 @@
 
 ## What Was Done
 
-Fixed operator types for each child position in composite operators, removing unnecessary categorical dimensions.
+Fixed operator types for each child position in composite operators, removing unnecessary categorical dimensions. Elimination is now a nested operator object rather than a flat GA scalar.
 
-**Result**: Reduced search space from 48 to 27 dimensions (44% reduction)
+**Result**: Reduced search space from 52 to 31 dimensions (40% reduction)
 
 ---
 
@@ -30,11 +30,12 @@ Fixed operator types for each child position in composite operators, removing un
 
 ## Dimension Comparison
 
-### Old Search Space (48 dimensions)
+### Old Search Space (52 dimensions)
 
 ```
 General (2): MAX_CLUSTER_DISTANCE, MAX_CLUSTER_JOIN_DISTANCE
-GA (5): populationSize, generations, newChromosomes, elitism, numThreads
+GA (4): populationSize, generations, newChromosomes, numThreads
+Eliminator (4): eliminator_type, eliminator_elitism, eliminator_survivalRate, eliminator_p
 Mutator (9): comp_p + type1 + params1 + weight1 + type2 + params2 + weight2
 Crossover (18): comp_p + type1 + all_params1 + weight1 + type2 + all_params2 + weight2
 Generator (4): type1 + weight1 + type2 + weight2
@@ -42,14 +43,15 @@ Selection (2): type, tournamentSize
 Fitness (1): type
 Logger (1): type
 ---
-Total: 48 dimensions (many unused per branch)
+Total: 52 dimensions (many unused per branch)
 ```
 
-### New Search Space (27 dimensions)
+### New Search Space (31 dimensions)
 
 ```
 General (2): MAX_CLUSTER_DISTANCE, MAX_CLUSTER_JOIN_DISTANCE
-GA (5): populationSize, generations, newChromosomes, elitism, numThreads
+GA (4): populationSize, generations, newChromosomes, numThreads
+Eliminator (4): eliminator_type, eliminator_elitism, eliminator_survivalRate, eliminator_p
 Mutator (7): comp_p + params1 + weight1 + params2 + weight2  [types fixed]
 Crossover (7): comp_p + params1 + weight1 + params2 + weight2  [types fixed, params relevant]
 Generator (2): weight1 + weight2  [types fixed, no params]
@@ -57,18 +59,16 @@ Selection (2): type, tournamentSize
 Fitness (1): type
 Logger (1): type
 ---
-Total: 27 dimensions (all active, no waste)
+Total: 31 dimensions (all active, no waste)
 ```
 
 ---
 
 ## Savings Breakdown
 
-| Reduction | Count | Reason |
 |-----------|-------|--------|
 | Removed type categoricals | -6 | Fixed types for mutator, crossover, generator children |
 | Removed unused parameters | -15 | GeometricColumnCrossover doesn't need k/p, KSwitchCrossover doesn't need geoP/crossoverProb |
-| **Total reduction** | **-21 dims** | **44% smaller search space** |
 
 ---
 

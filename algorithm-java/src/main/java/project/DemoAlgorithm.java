@@ -4,7 +4,6 @@ import project.genetic.chromosome.Chromosome;
 import project.genetic.logger.LogLevel;
 import project.settings.Settings;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -40,7 +39,7 @@ public class DemoAlgorithm<T extends Chromosome> {
                 break;
             }
 
-            List<T> nextPopulation = new ArrayList<>(population.subList(population.size() - s.elitism, population.size())); // Elite chromosomes survive
+            List<T> nextPopulation = s.eliminator.select(population); // Elite chromosomes survive
             while (nextPopulation.size() < s.populationSize - s.newChromosomes) { // Fill next population with children
                 List<T> tempParents = s.selection.select(population); // Choose two parents.
                 List<T> children = s.crossover.crossover(tempParents.getFirst(), tempParents.getLast()); // Get two children

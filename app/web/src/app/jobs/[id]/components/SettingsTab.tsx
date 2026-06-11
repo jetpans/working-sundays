@@ -24,6 +24,7 @@ const CROSSOVERS = [
   "CompositeCrossover",
 ];
 const SELECTIONS = ["TournamentSelection", "RankSelection"];
+const ELIMINATORS = ["EliteEliminator", "EliteGeometricEliminator"];
 const FITNESSES = ["FastIntersectUnionFitness", "CorrectFitness"];
 const GENERATORS = [
   "AllSundaysHaveWorkGenerator",
@@ -210,6 +211,42 @@ function OperatorParamsEditor({
     );
   }
 
+  if (type === "EliteEliminator") {
+    return (
+      <div>
+        <label className="text-sm text-slate-600">elitism</label>
+        {numberInput({
+          value: value?.elitism ?? 5,
+          onChange: (v: number) => onChange({ ...value, elitism: v }),
+          step: 1,
+        })}
+      </div>
+    );
+  }
+
+  if (type === "EliteGeometricEliminator") {
+    return (
+      <div className="space-y-2">
+        <div>
+          <label className="text-sm text-slate-600">survivalRate</label>
+          {numberInput({
+            value: value?.survivalRate ?? 0.2,
+            onChange: (v: number) => onChange({ ...value, survivalRate: v }),
+            step: 0.01,
+          })}
+        </div>
+        <div>
+          <label className="text-sm text-slate-600">p</label>
+          {numberInput({
+            value: value?.p ?? 0.5,
+            onChange: (v: number) => onChange({ ...value, p: v }),
+            step: 0.01,
+          })}
+        </div>
+      </div>
+    );
+  }
+
   // RankSelection and fitnesses/generators/loggers with no params
   if (
     type === "RankSelection" ||
@@ -364,11 +401,14 @@ export default function SettingsTab({
         populationSize: 100,
         generations: 5000,
         newChromosomes: 2,
-        elitism: 5,
         numThreads: 4,
         deterministic: true,
         timelimit: 3600,
         stagnationFraction: 0.2,
+        eliminator: {
+          type: "EliteEliminator",
+          params: { elitism: 5 },
+        },
         mutator: {
           type: "CompositeMutator",
           params: { p: 1, weights: [1], children: [] },
@@ -400,11 +440,11 @@ export default function SettingsTab({
       ga.populationSize !== undefined &&
       ga.generations !== undefined &&
       ga.newChromosomes !== undefined &&
-      ga.elitism !== undefined &&
       ga.numThreads !== undefined &&
       ga.deterministic !== undefined &&
       ga.timelimit !== undefined &&
       ga.stagnationFraction !== undefined &&
+      !!ga.eliminator?.type &&
       !!ga.mutator?.type &&
       !!ga.crossover?.type &&
       !!ga.selection?.type &&
@@ -527,20 +567,6 @@ export default function SettingsTab({
           </div>
           <div>
             <label
-              title="Number of top individuals preserved each generation"
-              className="block text-sm font-medium text-slate-600"
-            >
-              Elitism
-            </label>
-            {numberInput({
-              value: ga.elitism,
-              onChange: (v: number) => setGa({ ...ga, elitism: v }),
-              step: 1,
-            })}
-          </div>
-
-          <div>
-            <label
               title="Number of worker threads for multi-threaded runs"
               className="block text-sm font-medium text-slate-600"
             >
@@ -661,6 +687,23 @@ export default function SettingsTab({
 
           <div>
             <label
+              title="Elimination strategy: chooses survivors after evaluation"
+              className="block text-sm font-medium text-slate-600"
+            >
+              Eliminator
+            </label>
+            <OperatorSelector
+              family="eliminator"
+              type={ga.eliminator?.type}
+              params={ga.eliminator?.params}
+              onChange={(t, p) =>
+                setGa({ ...ga, eliminator: { type: t, params: p } })
+              }
+            />
+          </div>
+
+          <div>
+            <label
               title="Fitness function: evaluates chromosome quality"
               className="block text-sm font-medium text-slate-600"
             >
@@ -740,6 +783,7 @@ function OperatorSelector({
     if (family === "mutator") return MUTATORS;
     if (family === "crossover") return CROSSOVERS;
     if (family === "selection") return SELECTIONS;
+    if (family === "eliminator") return ELIMINATORS;
     if (family === "fitness") return FITNESSES;
     if (family === "generator") return GENERATORS;
     if (family === "logger") return LOGGERS;

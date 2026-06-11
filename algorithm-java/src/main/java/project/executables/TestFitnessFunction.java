@@ -17,14 +17,14 @@ public class TestFitnessFunction {
 
 
     public static void main(String[] args) {
-        int NO_CHROMOSOMES = 1000;
+        int NO_CHROMOSOMES = 10000;
 
         String instanceFolder = args[0];
         String dataPath = instanceFolder + "/data.json";
         String constraintPath = instanceFolder + "/constraints.json";
 
         Problem.load(constraintPath, dataPath);
-        List<List<String>> clusters = Util.generateClusters(Problem.getInstance().storeIds, 10, 3, Global.RANDOM);
+        List<List<String>> clusters = Util.generateClusters(Problem.getInstance().storeIds, 22, 10, Global.RANDOM);
         List<String> storeIds = clusters.get(0);
 
         Generator<MatrixChromosome> generator = new RandomGenerator(storeIds);

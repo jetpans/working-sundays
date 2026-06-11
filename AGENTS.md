@@ -282,6 +282,7 @@ Use this checklist when adding a new genetic operator or a new setting so the fr
 
 1. **Define the JSON contract first**
    - Update the expected shape under `descriptor.job.settings` (usually `settings.general` or `settings.ga`).
+   - Use nested `{ type, params }` objects for operator-backed settings such as the eliminator contract.
    - Decide default values and whether the setting should be user-visible.
 
 2. **Frontend: add the control + validation**

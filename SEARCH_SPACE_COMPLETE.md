@@ -8,7 +8,7 @@
 - ✅ **Crossover**: CompositeCrossover with ALL 5 crossover types (each with own hyperparameters and weight)
 - ✅ **Generator**: Fixed AllSundaysHaveWorkGenerator (only available option, no choice needed)
 
-**Total dimensions: 33** (34 with deterministic flag)
+**Total dimensions: 34** (35 with deterministic flag)
 
 ---
 
@@ -18,12 +18,17 @@
 - `general_MAX_CLUSTER_DISTANCE`: Real [1.0, 12.0]
 - `general_MAX_CLUSTER_JOIN_DISTANCE`: Real [2.0, 20.0]
 
-### GA Base Parameters (5)
+### GA Base Parameters (4)
 - `populationSize`: Integer [40, 300]
 - `generations`: Integer [500, 8000]
 - `newChromosomes`: Integer [1, 8]
-- `elitism`: Integer [1, 20]
 - `numThreads`: Integer [1, 8]
+
+### Eliminator Parameters (4)
+- `eliminator_type`: Categorical [`EliteEliminator`, `EliteGeometricEliminator`]
+- `eliminator_elitism`: Integer [1, 20]
+- `eliminator_survivalRate`: Real [0.05, 0.5]
+- `eliminator_p`: Real [0.1, 0.95]
 
 ### MUTATOR: CompositeMutator (7 hyperparameters)
 
@@ -55,6 +60,12 @@ Both children are **RandomSimpleMutator** with independent hyperparameters:
   }
 }
 ```
+
+**Hyperparameters (4)**:
+1. `eliminator_type`: Categorical [`EliteEliminator`, `EliteGeometricEliminator`]
+2. `eliminator_elitism`: Integer [1, 20]
+3. `eliminator_survivalRate`: Real [0.05, 0.5]
+4. `eliminator_p`: Real [0.1, 0.95]
 
 **Hyperparameters (7)**:
 1. `mutator_comp_p`: Real [0.1, 1.0]
@@ -181,16 +192,17 @@ Both children are **RandomSimpleMutator** with independent hyperparameters:
 | Component | Hyperparameters | Total |
 |-----------|-----------------|-------|
 | General Settings | 2 | 2 |
-| GA Base Parameters | 5 | 5 |
+| GA Base Parameters | 4 | 4 |
+| Eliminator Parameters | 4 | 4 |
 | Mutator | 7 | 7 |
 | Crossover | 15 | 15 |
 | Generator | 0 | 0 |
 | Selection | 2 | 2 |
 | Fitness | 1 | 1 |
 | Logger | 1 | 1 |
-| **Subtotal** | | **33** |
+| **Subtotal** | | **34** |
 | Deterministic (optional) | 1 | 1 |
-| **Total with deterministic** | | **34** |
+| **Total with deterministic** | | **35** |
 
 ---
 
