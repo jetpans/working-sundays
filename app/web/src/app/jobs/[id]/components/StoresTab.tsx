@@ -22,6 +22,13 @@ interface StoresTabProps {
   initialConstraints?: Record<string, StoreConstraints> | null;
   initialRadiusCalc?: string | null;
   initialGeneralSettings?: Record<string, any> | null;
+  initialSettings?: Record<string, any> | null;
+  onImportedJob?: (payload: {
+    stores?: Record<string, Store>;
+    constraints?: Record<string, any>;
+    radiusCalc?: string;
+    settings?: Record<string, any>;
+  }) => void;
   onValidationChange?: (valid: boolean) => void;
   onDirtyChange?: (dirty: boolean) => void;
 }
@@ -34,6 +41,8 @@ export default function StoresTab({
   initialConstraints,
   initialRadiusCalc,
   initialGeneralSettings,
+  initialSettings,
+  onImportedJob,
   onValidationChange,
   onDirtyChange,
 }: StoresTabProps) {
@@ -54,6 +63,9 @@ export default function StoresTab({
     MAX_CLUSTER_DISTANCE: 3,
     MAX_CLUSTER_JOIN_DISTANCE: 10,
   });
+  const [settingsForSave, setSettingsForSave] = useState<Record<string, any>>(
+    {},
+  );
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [sundays, setSundays] = useState<Date[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -99,12 +111,15 @@ export default function StoresTab({
       initialRadiusCalc !== undefined && initialRadiusCalc !== null;
     const hasServerGeneralSettings =
       initialGeneralSettings !== undefined && initialGeneralSettings !== null;
+    const hasServerSettings =
+      initialSettings !== undefined && initialSettings !== null;
 
     if (
       !hasServerStores &&
       !hasServerConstraints &&
       !hasServerRadiusCalc &&
-      !hasServerGeneralSettings
+      !hasServerGeneralSettings &&
+      !hasServerSettings
     ) {
       return;
     }
@@ -118,6 +133,7 @@ export default function StoresTab({
         ...initialGeneralSettings,
       }));
     }
+    if (initialSettings) setSettingsForSave(initialSettings);
 
     const hasSavedStores =
       !!initialStores && Object.keys(initialStores).length > 0;
@@ -139,6 +155,7 @@ export default function StoresTab({
     initialConstraints,
     initialRadiusCalc,
     initialGeneralSettings,
+    initialSettings,
     applyConstraints,
   ]);
 
@@ -242,7 +259,9 @@ export default function StoresTab({
         `/api/job/${username}/${jobId}/settings`,
         {
           method: "POST",
-          body: JSON.stringify({ settings: { general: generalSettings } }),
+          body: JSON.stringify({
+            settings: { ...settingsForSave, general: generalSettings },
+          }),
         },
       );
       if (!settingsResponse.ok) {
@@ -364,24 +383,60 @@ export default function StoresTab({
           toast.error("Invalid job file format");
           return;
         }
-        if (parsed.data) {
+        const importedStores = parsed.data as Record<string, Store> | undefined;
+        const importedConstraints = parsed.constraints as
+          | Record<string, any>
+          | undefined;
+        const importedSettings =
+          parsed.settings && typeof parsed.settings === "object"
+            ? (parsed.settings as Record<string, any>)
+            : undefined;
+        const importedRadiusCalc =
+          parsed.value_for_radius_calculator || parsed.radius_calc;
+
+        if (importedStores) {
           const validation = validateStoreData(parsed.data);
           if (!validation.valid) {
             toast.error(`Invalid store data: ${validation.errors.join("; ")}`);
             return;
           }
-          setStores(parsed.data as Record<string, Store>);
+          setStores(importedStores);
         }
         // ignore clustering from imported job (algorithm will compute it)
-        if (parsed.constraints)
-          applyConstraints(parsed.constraints as Record<string, any>);
-        if (parsed.value_for_radius_calculator || parsed.radius_calc) {
-          setRadiusCalculator(
-            parsed.value_for_radius_calculator || parsed.radius_calc,
-          );
+        if (importedConstraints) applyConstraints(importedConstraints);
+        if (importedRadiusCalc) {
+          setRadiusCalculator(importedRadiusCalc);
         }
-        markDirty();
-        toast.success("Job imported. Review and save when ready.");
+        if (importedSettings?.general) {
+          setGeneralSettings((prev: any) => ({
+            ...prev,
+            ...importedSettings.general,
+          }));
+        }
+        if (importedSettings) setSettingsForSave(importedSettings);
+        onImportedJob?.({
+          stores: importedStores,
+          constraints: importedConstraints,
+          radiusCalc: importedRadiusCalc,
+          settings: importedSettings,
+        });
+        const hasImportedStores =
+          !!importedStores && Object.keys(importedStores).length > 0;
+        const hasImportedConstraints =
+          !!importedConstraints &&
+          importedConstraints.YEAR !== undefined &&
+          importedConstraints.SUNDAYS !== undefined &&
+          importedConstraints.MAX_WORKS !== undefined &&
+          importedConstraints.MAX_DOESNT_WORK !== undefined;
+        const hasImportedRadiusCalc =
+          typeof importedRadiusCalc === "string" &&
+          importedRadiusCalc.trim().length > 0;
+
+        setIsPersisted(
+          hasImportedStores && hasImportedConstraints && hasImportedRadiusCalc,
+        );
+        setIsDirty(false);
+        toast.success("Job imported");
       } catch (err) {
         toast.error("Failed to parse job file");
       } finally {

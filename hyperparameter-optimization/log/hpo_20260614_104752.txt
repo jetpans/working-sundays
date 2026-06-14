@@ -1,9 +1,0 @@
-HPO started at 2026-06-14T10:47:52.086566
-Templates: first_demo.job
-Search space dimensions: 33
-2026-06-14T10:50:03.273831 - Run 1 - job adac169a-71b4-47e7-a2f4-1ce9dec5dd9a - fitness_source: stats.optimized - fitness: 20.715553171001446
-2026-06-14T10:50:09.639469 - Run 2 - job ad68e8fe-697b-42f7-8e76-660592c0f24f - fitness_source: stats.optimized - fitness: 18.8099733791506
-2026-06-14T10:50:18.255885 - Run 3 - job bcbd32bc-83d8-4e5a-8f8f-a004ed7fd7a2 - fitness_source: stats.optimized - fitness: 18.765176197734156
-2026-06-14T10:51:31.012618 - Run 4 - job c34118ed-221e-456a-9d9c-a5dba6be5f51 - fitness_source: stats.optimized - fitness: 20.001745070272452
-2026-06-14T10:51:35.284830 - Run 5 - job 209cd345-a103-4267-8c77-4bc27596847a - fitness_source: stats.optimized - fitness: 18.415258825103294
-2026-06-14T10:56:07.945654 - Run 6 - job fe9b7200-678d-4998-9792-7042df56123c - fitness_source: stats.optimized - fitness: 20.437523239309886

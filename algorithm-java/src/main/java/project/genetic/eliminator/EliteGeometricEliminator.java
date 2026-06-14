@@ -23,7 +23,7 @@ public class EliteGeometricEliminator implements Eliminator {
         List<T> nextPopulation = new ArrayList<>(List.of(population.getLast()));
         while (nextPopulation.size() < numToSurvive) {
             int index = population.size() - Util.randomGeometric(population.size(), this.p, Global.RANDOM);
-            for (int i = index; i < population.size() - 1; i++) {
+            for (int i = index - 1; i > 0; i--) {
                 if (!nextPopulation.contains(population.get(i))) {
                     nextPopulation.add(population.get(i));
                     break;

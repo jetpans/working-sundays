@@ -66,7 +66,7 @@ def build_search_space() -> List[SpaceSpec]:
 
         # MUTATOR: CompositeMutator with 2x RandomSimpleMutator (7)
         # Both children are RandomSimpleMutator with independent hyperparameters
-        SpaceSpec("mutator_comp_p", Real(1.0, 1.0)),
+        SpaceSpec("mutator_comp_p", Real(0.99999, 1.0)),
         SpaceSpec("mutator_child1_numMutations", Integer(1, 10)),
         SpaceSpec("mutator_child1_p", Real(0.1, 0.9)),
         SpaceSpec("mutator_child1_weight", Real(0.1, 1.0)),
@@ -75,7 +75,7 @@ def build_search_space() -> List[SpaceSpec]:
         SpaceSpec("mutator_child2_weight", Real(0.1, 1.0)),
 
         # CROSSOVER: CompositeCrossover with ALL 5 base crossovers (15)
-        SpaceSpec("crossover_comp_p", Real(1.0, 1.0)),
+        SpaceSpec("crossover_comp_p",  Real(0.99999, 1.0)),
 
         # GeometricColumnCrossover (child1)
         SpaceSpec("crossover_child1_geoP", Real(0.1, 0.8)),
@@ -261,16 +261,16 @@ def build_ga_settings(sample: Dict[str, Any], template: Dict[str, Any]) -> Dict[
         "populationSize": int(sample["populationSize"]),
         "generations": generations,
         "newChromosomes": int(sample["newChromosomes"]),
-        "numThreads": int(template.get("numThreads", 4)),
-        "deterministic": bool(template.get("deterministic", False)),
+        "numThreads": int(template.get("numThreads") or 4),
+        "deterministic": bool(template.get("deterministic") if template.get("deterministic") is not None else False),
         "eliminator": build_eliminator(sample),
         "mutator": {"type": "CompositeMutator", "params": mutator_params},
         "crossover": {"type": "CompositeCrossover", "params": crossover_params},
         "selection": {"type": selection_type, "params": selection_params},
-        "fitness": {"type": template.get("fitness", "FastIntersectUnionFitness"), "params": {}},
+        "fitness": {"type": template.get("fitness") or "FastIntersectUnionFitness", "params": {}},
         "generator": generator,
-        "logger": {"type": template.get("logger", "SoutLogger"), "params": {}},
-        "timelimit": int(template.get("timelimit", 3600)),
+        "logger": {"type": template.get("logger") or "SoutLogger", "params": {}},
+        "timelimit": int(template.get("timelimit") or 3600),
         "stagnation": stagnation,
     }
 

@@ -5,7 +5,7 @@ import project.genetic.chromosome.Chromosome;
 import java.util.List;
 
 /**
- * Usually returns 2 chromosomes FROM candidates based on some logic, but can return any number.
+ * Usually returns 2 chromosomes FROM candidates based on some logic, but can return any number. Candidates has to be sorted.
  */
 
 public interface Selection {

@@ -11,7 +11,7 @@ public class RankSelection implements Selection {
 
     @Override
     public <T extends Chromosome> List<T> select(List<T> candidates) {
-        candidates.sort((a, b) -> Double.compare(b.fitness, a.fitness));
+//        candidates.sort((a, b) -> Double.compare(b.fitness, a.fitness));
         if (probabilities == null || probabilities.size() != candidates.size()) {
             probabilities = new ArrayList<>();
             int n = candidates.size();

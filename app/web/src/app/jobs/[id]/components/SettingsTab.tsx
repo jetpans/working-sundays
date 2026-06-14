@@ -456,7 +456,7 @@ export default function SettingsTab({
 
   useEffect(() => {
     if (!initialDescriptor) return;
-    const s = initialDescriptor.settings || {};
+    const s = initialDescriptor.descriptor?.settings || initialDescriptor.settings || {};
     if (s.general) setGeneral((prev: any) => ({ ...prev, ...s.general }));
     if (s.ga) setGa((prev: any) => ({ ...prev, ...s.ga }));
   }, [initialDescriptor]);

@@ -9,6 +9,7 @@ import StoresTab from "./components/StoresTab";
 import SettingsTab from "./components/SettingsTab";
 import RunTab from "./components/RunTab";
 import ResultsTab from "./components/ResultsTab";
+import { Store, StoreConstraints } from "@/lib/jobUtils";
 
 type TabName = "stores" | "settings" | "run" | "results";
 
@@ -16,6 +17,40 @@ interface TabInfo {
   name: TabName;
   label: string;
   isValid?: boolean;
+}
+
+interface JobDescriptor {
+  description?: string | null;
+  settings?: Record<string, unknown>;
+  value_for_radius_calculator?: string | null;
+}
+
+interface JobInfo {
+  descriptor?: JobDescriptor;
+  data?: Record<string, Store> | null;
+  constraints?: Record<string, StoreConstraints> | null;
+}
+
+function hasCompleteStoresTab(jobInfo: JobInfo | null) {
+  const constraints = jobInfo?.constraints;
+  const radiusCalc = jobInfo?.descriptor?.value_for_radius_calculator;
+
+  return (
+    !!jobInfo?.data &&
+    Object.keys(jobInfo.data).length > 0 &&
+    !!constraints &&
+    constraints.YEAR !== undefined &&
+    constraints.SUNDAYS !== undefined &&
+    constraints.MAX_WORKS !== undefined &&
+    constraints.MAX_DOESNT_WORK !== undefined &&
+    typeof radiusCalc === "string" &&
+    radiusCalc.trim().length > 0
+  );
+}
+
+function hasCompleteSettingsTab(jobInfo: JobInfo | null) {
+  const settings = jobInfo?.descriptor?.settings;
+  return !!settings?.general && !!settings?.ga;
 }
 
 function renderTabStatusIcon(tab: TabName, isValid?: boolean) {
@@ -50,7 +85,7 @@ export default function JobDetailsPage() {
     run: false,
     results: false,
   });
-  const [jobInfo, setJobInfo] = useState<any | null>(null);
+  const [jobInfo, setJobInfo] = useState<JobInfo | null>(null);
   const [description, setDescription] = useState("");
   const [isSavingDescription, setIsSavingDescription] = useState(false);
 
@@ -63,8 +98,14 @@ export default function JobDetailsPage() {
         if (!res.ok) return;
         const body = await res.json();
         if (body.success && mounted) {
-          setJobInfo(body.data || null);
+          const nextJobInfo = body.data || null;
+          setJobInfo(nextJobInfo);
           setDescription(body.data?.descriptor?.description || "");
+          setTabValidity((prev) => ({
+            ...prev,
+            stores: hasCompleteStoresTab(nextJobInfo),
+            settings: hasCompleteSettingsTab(nextJobInfo),
+          }));
         }
       } catch {
         // ignore
@@ -111,7 +152,7 @@ export default function JobDetailsPage() {
             server={server}
             initialDescriptor={jobInfo || undefined}
             onSaved={({ general, ga }) => {
-              setJobInfo((prev: any) => {
+              setJobInfo((prev) => {
                 if (!prev) return prev;
                 const prevDescriptor = prev.descriptor || {};
                 const prevSettings = prevDescriptor.settings || {};
@@ -188,7 +229,7 @@ export default function JobDetailsPage() {
                 if (!body.success) {
                   throw new Error(body.error || "Failed to save description");
                 }
-                setJobInfo((prev: any) => {
+                setJobInfo((prev) => {
                   if (!prev) return prev;
                   return {
                     ...prev,
@@ -262,6 +303,28 @@ export default function JobDetailsPage() {
               initialGeneralSettings={
                 jobInfo.descriptor?.settings?.general || undefined
               }
+              initialSettings={jobInfo.descriptor?.settings || undefined}
+              onImportedJob={({ stores, constraints, radiusCalc, settings }) => {
+                const importedJobInfo = {
+                  ...jobInfo,
+                  data: stores || jobInfo.data,
+                  constraints: constraints || jobInfo.constraints,
+                  descriptor: {
+                    ...jobInfo.descriptor,
+                    settings: settings || jobInfo.descriptor?.settings || {},
+                    value_for_radius_calculator:
+                      radiusCalc ||
+                      jobInfo.descriptor?.value_for_radius_calculator,
+                  },
+                };
+
+                setJobInfo(importedJobInfo);
+                setTabValidity((prev) => ({
+                  ...prev,
+                  stores: hasCompleteStoresTab(importedJobInfo),
+                  settings: hasCompleteSettingsTab(importedJobInfo),
+                }));
+              }}
               onValidationChange={(isValid) =>
                 handleTabValidation("stores", isValid)
               }

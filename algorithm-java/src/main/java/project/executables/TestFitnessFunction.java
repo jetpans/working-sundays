@@ -5,8 +5,8 @@ import project.genetic.chromosome.MatrixChromosome;
 import project.genetic.fitness.CorrectFitness;
 import project.genetic.fitness.FastIntersectUnionFitness;
 import project.genetic.fitness.Fitness;
+import project.genetic.generator.AllSundaysHaveWorkGenerator;
 import project.genetic.generator.Generator;
-import project.genetic.generator.RandomGenerator;
 import project.models.Global;
 import project.models.Problem;
 
@@ -27,7 +27,7 @@ public class TestFitnessFunction {
         List<List<String>> clusters = Util.generateClusters(Problem.getInstance().storeIds, 22, 10, Global.RANDOM);
         List<String> storeIds = clusters.get(0);
 
-        Generator<MatrixChromosome> generator = new RandomGenerator(storeIds);
+        Generator<MatrixChromosome> generator = new AllSundaysHaveWorkGenerator(storeIds);
 
         List<MatrixChromosome> chromosomes = generator.generateMany(NO_CHROMOSOMES);
 
@@ -35,7 +35,9 @@ public class TestFitnessFunction {
         Fitness<MatrixChromosome> f2 = new FastIntersectUnionFitness();
 
         long start = System.nanoTime();
-        List<Double> scores1 = chromosomes.stream().map(f1::evaluate).toList();
+//        List<Double> scores1 = chromosomes.stream().map(f1::evaluate).toList();
+
+        List<Double> scores1 = new ArrayList<>();
         long end = System.nanoTime();
         double time1 = (end - start) / 1e6;
         start = System.nanoTime();
