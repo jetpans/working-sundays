@@ -1,0 +1,259 @@
+{
+  "constraints": {
+    "MAX_DOESNT_WORK": 36,
+    "MAX_WORKS": 16,
+    "SUNDAYS": 52,
+    "YEAR": 2026,
+    "node/1558018612": {
+      "doesnt_work": [],
+      "works": []
+    },
+    "node/2162623568": {
+      "doesnt_work": [],
+      "works": []
+    },
+    "node/2701208483": {
+      "doesnt_work": [],
+      "works": []
+    },
+    "node/2701208497": {
+      "doesnt_work": [
+        26,
+        34
+      ],
+      "works": [
+        21,
+        22,
+        38
+      ]
+    },
+    "node/2877579783": {
+      "doesnt_work": [],
+      "works": []
+    },
+    "node/482711193": {
+      "doesnt_work": [],
+      "works": []
+    },
+    "node/8898067538": {
+      "doesnt_work": [],
+      "works": []
+    },
+    "way/194940545": {
+      "doesnt_work": [],
+      "works": []
+    },
+    "way/757296691": {
+      "doesnt_work": [],
+      "works": []
+    },
+    "way/924116254": {
+      "doesnt_work": [],
+      "works": []
+    }
+  },
+  "created_at": "2026-06-14T09:33:13.166725+00:00",
+  "data": {
+    "node/1558018612": {
+      "brand": "",
+      "coordinates": [
+        16.3173037,
+        46.3115092
+      ],
+      "formatted_address": "Bilogorska ul. 11, 42000, Varaždin, Croatia",
+      "name": "KMS Ltd.",
+      "radius_km": 0.5,
+      "rating": 4.5,
+      "user_ratings_total": 19,
+      "value_for_radius": 19
+    },
+    "node/2162623568": {
+      "brand": "Spar",
+      "coordinates": [
+        16.3073722,
+        46.3197276
+      ],
+      "formatted_address": "Optujska 171, 42000, Varaždin, Croatia",
+      "name": "SPAR",
+      "radius_km": 2.918,
+      "rating": 4.4,
+      "user_ratings_total": 1221,
+      "value_for_radius": 1221
+    },
+    "node/2701208483": {
+      "brand": "",
+      "coordinates": [
+        16.3350422,
+        46.3029139
+      ],
+      "formatted_address": "Ul. Zrinskih i Frankopana 2, 42000, Varaždin, Croatia",
+      "name": "Branka Ltd.",
+      "radius_km": 1.4095,
+      "rating": 4.1,
+      "user_ratings_total": 162,
+      "value_for_radius": 162
+    },
+    "node/2701208497": {
+      "brand": "Konzum",
+      "coordinates": [
+        16.3225722,
+        46.3143388
+      ],
+      "formatted_address": "Ul. Gustava Krkleca 1/A, 42000, Varaždin, Croatia",
+      "name": "Super Konzum",
+      "radius_km": 2.0688,
+      "rating": 4.3,
+      "user_ratings_total": 702,
+      "value_for_radius": 702
+    },
+    "node/2877579783": {
+      "brand": "Konzum",
+      "coordinates": [
+        16.3289369,
+        46.3029592
+      ],
+      "formatted_address": "Ul. Ivana Meštrovića 1, 42000, Varaždin, Croatia",
+      "name": "Konzum",
+      "radius_km": 0.5,
+      "rating": 4.6,
+      "user_ratings_total": 24,
+      "value_for_radius": 24
+    },
+    "node/482711193": {
+      "brand": "",
+      "coordinates": [
+        16.3149428,
+        46.3186501
+      ],
+      "formatted_address": "Optujska ul. 182, 42000, Varaždin, Croatia",
+      "name": "Branka",
+      "radius_km": 0.5,
+      "rating": 4.2,
+      "user_ratings_total": 644,
+      "value_for_radius": 644
+    },
+    "node/8898067538": {
+      "brand": "Konzum",
+      "coordinates": [
+        16.3262456,
+        46.3116413
+      ],
+      "formatted_address": "Ul. Gustava Krkleca 1/A, 42000, Varaždin, Croatia",
+      "name": "Super Konzum",
+      "radius_km": 2.4008,
+      "rating": 4.3,
+      "user_ratings_total": 702,
+      "value_for_radius": 702
+    },
+    "way/194940545": {
+      "brand": "Plodine",
+      "coordinates": [
+        16.3159711,
+        46.3168974
+      ],
+      "formatted_address": "Optujska ul. 151, 42000, Varaždin, Croatia",
+      "name": "Plodine",
+      "radius_km": 1.8045,
+      "rating": 3.9,
+      "user_ratings_total": 1487,
+      "value_for_radius": 1487
+    },
+    "way/757296691": {
+      "brand": "Lidl",
+      "coordinates": [
+        16.3135164,
+        46.3189352
+      ],
+      "formatted_address": "Optujska ul. 74, 42000, Varaždin, Croatia",
+      "name": "Lidl",
+      "radius_km": 0.8822,
+      "rating": 4.6,
+      "user_ratings_total": 1135,
+      "value_for_radius": 1135
+    },
+    "way/924116254": {
+      "brand": "Konzum",
+      "coordinates": [
+        16.3307568,
+        46.3057105
+      ],
+      "formatted_address": "Ul. Braće Radić 8, 42000, Varaždin, Croatia",
+      "name": "Konzum",
+      "radius_km": 1.8644,
+      "rating": 3.8,
+      "user_ratings_total": 306,
+      "value_for_radius": 306
+    }
+  },
+  "description": null,
+  "id": "a70df135-6be5-48a3-a3ed-9de07119e9f3",
+  "run_info": {
+    "status": "Complete",
+    "updated_at": "2026-06-14T09:34:21.609762+00:00"
+  },
+  "settings": {
+    "ga": {
+      "crossover": {
+        "params": {
+          "children": [],
+          "p": 1,
+          "weights": [
+            0.4,
+            0.4,
+            0.2
+          ]
+        },
+        "type": "CompositeCrossover"
+      },
+      "deterministic": true,
+      "eliminator": {
+        "params": {
+          "elitism": 2
+        },
+        "type": "EliteEliminator"
+      },
+      "fitness": {
+        "params": {},
+        "type": "FastIntersectUnionFitness"
+      },
+      "generations": 5000,
+      "generator": {
+        "params": {},
+        "type": "AllSundaysHaveWorkGenerator"
+      },
+      "logger": {
+        "params": {},
+        "type": "SoutLogger"
+      },
+      "mutator": {
+        "params": {
+          "children": [],
+          "p": 1,
+          "weights": [
+            1
+          ]
+        },
+        "type": "CompositeMutator"
+      },
+      "newChromosomes": 2,
+      "numThreads": 4,
+      "populationSize": 100,
+      "selection": {
+        "params": {
+          "tournamentSize": 3
+        },
+        "type": "TournamentSelection"
+      },
+      "stagnationFraction": 0.2,
+      "timelimit": 3600
+    },
+    "general": {
+      "MAX_CLUSTER_DISTANCE": 3,
+      "MAX_CLUSTER_JOIN_DISTANCE": 10
+    }
+  },
+  "status": "initialized",
+  "username": "jetpans",
+  "value_calculator": null,
+  "value_for_radius_calculator": "return store.get('user_ratings_total', 5) * 1"
+}

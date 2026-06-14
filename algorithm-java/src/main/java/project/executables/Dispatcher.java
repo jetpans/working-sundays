@@ -5,7 +5,7 @@ import project.Util;
 import project.genetic.chromosome.MatrixChromosome;
 import project.genetic.generator.AllSundaysHaveWorkGenerator;
 import project.genetic.generator.ForStoresGenerator;
-import project.genetic.generator.SeedingGenerator;
+import project.genetic.generator.StochasticSeedingGenerator;
 import project.models.Cluster;
 import project.models.Global;
 import project.models.Problem;
@@ -90,7 +90,7 @@ public class Dispatcher {
 
     public static MatrixChromosome solveSubProblem(Settings subProblemSettings, List<String> storeIds, List<MatrixChromosome> existingSolutions) {
         if (!existingSolutions.isEmpty()) {
-            subProblemSettings.generator = new SeedingGenerator(storeIds, existingSolutions, subProblemSettings.generator);
+            subProblemSettings.generator = new StochasticSeedingGenerator(storeIds, existingSolutions, 0.8, subProblemSettings.generator);
         }
         subProblemSettings.generator = ((ForStoresGenerator) subProblemSettings.generator).copyOf();
 

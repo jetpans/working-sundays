@@ -54,9 +54,9 @@ def build_search_space() -> List[SpaceSpec]:
         SpaceSpec("general_MAX_CLUSTER_JOIN_DISTANCE", Real(2.0, 20.0)),
 
         # GA base parameters (4) - numThreads now comes from job template
-        SpaceSpec("populationSize", Integer(40, 300)),
-        SpaceSpec("generations", Integer(500, 8000)),
-        SpaceSpec("newChromosomes", Integer(1, 8)),
+        SpaceSpec("populationSize", Categorical([50, 200, 500, 1000, 5000])),
+        SpaceSpec("generations", Categorical([500, 2000, 5000, 8000])),
+        SpaceSpec("newChromosomes", Integer(1, 30)),
 
         # ELIMINATOR: choose elimination strategy and its params (3)
         SpaceSpec("eliminator_type", Categorical(["EliteEliminator", "EliteGeometricEliminator"])),
@@ -66,16 +66,16 @@ def build_search_space() -> List[SpaceSpec]:
 
         # MUTATOR: CompositeMutator with 2x RandomSimpleMutator (7)
         # Both children are RandomSimpleMutator with independent hyperparameters
-        SpaceSpec("mutator_comp_p", Real(0.1, 1.0)),
+        SpaceSpec("mutator_comp_p", Real(1.0, 1.0)),
         SpaceSpec("mutator_child1_numMutations", Integer(1, 10)),
         SpaceSpec("mutator_child1_p", Real(0.1, 0.9)),
         SpaceSpec("mutator_child1_weight", Real(0.1, 1.0)),
-        SpaceSpec("mutator_child2_numMutations", Integer(1, 10)),
+        SpaceSpec("mutator_child2_numMutations", Integer(5, 20)),
         SpaceSpec("mutator_child2_p", Real(0.1, 0.9)),
         SpaceSpec("mutator_child2_weight", Real(0.1, 1.0)),
 
         # CROSSOVER: CompositeCrossover with ALL 5 base crossovers (15)
-        SpaceSpec("crossover_comp_p", Real(0.1, 1.0)),
+        SpaceSpec("crossover_comp_p", Real(1.0, 1.0)),
 
         # GeometricColumnCrossover (child1)
         SpaceSpec("crossover_child1_geoP", Real(0.1, 0.8)),

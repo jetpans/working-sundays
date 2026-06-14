@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 import json
+import csv
 from datetime import datetime
 
 from skopt import Optimizer
@@ -101,19 +102,85 @@ def extract_fitness(solution_payload: Dict[str, Any], fitness_key: str) -> float
     raise ValueError(f"Expected '{fitness_key}' in solution payload")
 
 
+def log_to_csv(
+    csv_path: Path,
+    iteration: int,
+    sample: Dict[str, Any],
+    avg_fitness: float,
+    per_template_scores: List[Tuple[str, float]],
+) -> None:
+    """Log tested configuration to CSV with template-specific columns."""
+    file_exists = csv_path.exists()
+    
+    # Flatten params for CSV
+    row = {
+        "iteration": iteration,
+        "timestamp": datetime.utcnow().isoformat(),
+        "avg_fitness": avg_fitness,
+    }
+    
+    # Add all hyperparams
+    row.update(sample)
+    
+    # Add per-template scores using template names
+    for template_name, score in per_template_scores:
+        row[f"{template_name}_fitness"] = score
+    
+    try:
+        with csv_path.open("a", newline="", encoding="utf-8") as f:
+            fieldnames = list(row.keys())
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            
+            # Write header if file is new
+            if not file_exists:
+                writer.writeheader()
+            
+            writer.writerow(row)
+    except Exception as e:
+        print(f"Warning: Failed to log to CSV: {e}")
+
+
+def save_best_params(
+    best_params_path: Path,
+    iteration: int,
+    best_params: Dict[str, Any],
+    best_score: float,
+) -> None:
+    """Save best params snapshot for quick reference."""
+    try:
+        best_params_path.write_text(
+            json.dumps({
+                "iteration": iteration,
+                "timestamp": datetime.utcnow().isoformat(),
+                "best_score": best_score,
+                "params": best_params,
+            }, indent=2),
+            encoding="utf-8"
+        )
+    except Exception as e:
+        print(f"Warning: Failed to save best params: {e}")
+
+
 def evaluate_candidate(
     client: ApiClient,
     templates: List[InstanceTemplate],
     sample: Dict[str, Any],
     run_number: int,
     log_path: Path,
-) -> Tuple[float, str]:
-    scores: List[float] = []
+) -> Tuple[float, str, List[Tuple[str, float]]]:
+    """
+    Evaluate a candidate configuration on all templates.
+    
+    Returns:
+        Tuple of (average_fitness, canonical_key, list of (template_name, fitness) tuples)
+    """
+    scores: List[Tuple[str, float]] = []
     template_ga = templates[0].descriptor.get("settings", {}).get("ga", {})
     canonical_key = build_settings_key(sample, template_ga)
 
     for template in templates:
         job_id = None
+        template_name = template.path.name
         try:
             base_general = template.descriptor.get("settings", {}).get("general", {})
             base_ga = template.descriptor.get("settings", {}).get("ga", {})
@@ -124,7 +191,7 @@ def evaluate_candidate(
             try:
                 with log_path.open("a", encoding="utf-8") as lf:
                     lf.write(
-                        f"{datetime.utcnow().isoformat()} - Run {run_number} - template {template.path.name} - job {job_id} - params: {json.dumps(sample)}\n")
+                        f"{datetime.utcnow().isoformat()} - Run {run_number} - template {template_name} - job {job_id} - params: {json.dumps(sample)}\n")
             except Exception:
                 pass
             client.run_job(job_id)
@@ -161,7 +228,7 @@ def evaluate_candidate(
                         f"{datetime.utcnow().isoformat()} - Run {run_number} - job {job_id} - fitness_source: {used_source} - fitness: {fitness}\n")
             except Exception:
                 pass
-            scores.append(fitness)
+            scores.append((template_name, fitness))
         finally:
             # Do not delete jobs; keep them for later inspection.
             pass
@@ -169,7 +236,8 @@ def evaluate_candidate(
     if not scores:
         raise RuntimeError("No scores returned from evaluation")
 
-    return sum(scores) / len(scores), canonical_key
+    avg_score = sum(score for _, score in scores) / len(scores)
+    return avg_score, canonical_key, scores
 
 
 def main() -> None:
@@ -191,12 +259,21 @@ def main() -> None:
     hpo_dir = Path(__file__).resolve().parent
     log_dir = hpo_dir / "log"
     log_dir.mkdir(parents=True, exist_ok=True)
-    logfile = datetime.utcnow().strftime("hpo_%Y%m%d_%H%M%S.txt")
-    log_path = log_dir / logfile
-    # initial header
+    
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    text_logfile = f"hpo_{timestamp}.txt"
+    csv_logfile = f"hpo_{timestamp}.csv"
+    best_params_file = f"best_params_{timestamp}.json"
+    
+    text_log_path = log_dir / text_logfile
+    csv_log_path = log_dir / csv_logfile
+    best_params_path = log_dir / best_params_file
+    
     try:
-        with log_path.open("a", encoding="utf-8") as lf:
+        with text_log_path.open("a", encoding="utf-8") as lf:
             lf.write(f"HPO started at {datetime.utcnow().isoformat()}\n")
+            lf.write(f"Templates: {', '.join(t.path.name for t in templates)}\n")
+            lf.write(f"Search space dimensions: {len(names)}\n")
     except Exception:
         pass
 
@@ -220,8 +297,11 @@ def main() -> None:
         if sample is None or canonical_key is None:
             raise RuntimeError("Unable to find a new unique configuration to evaluate")
 
-        score, canonical_key = evaluate_candidate(client, templates, sample, iteration + 1, log_path)
+        score, canonical_key, per_template_scores = evaluate_candidate(client, templates, sample, iteration + 1, text_log_path)
         seen_keys.add(canonical_key)
+
+        # Log to CSV
+        log_to_csv(csv_log_path, iteration + 1, sample, score, per_template_scores)
 
         objective = -score
         optimizer.tell(point, objective)
@@ -229,6 +309,8 @@ def main() -> None:
         if best_score is None or score > best_score:
             best_score = score
             best_params = sample
+            # Save best params snapshot
+            save_best_params(best_params_path, iteration + 1, best_params, best_score)
 
         print(
             f"Iter {iteration + 1}/{CONFIG.max_iter}: score={score:.6f} best={best_score:.6f}"
@@ -237,6 +319,10 @@ def main() -> None:
     print("\nBest score:", best_score)
     print("Best params:")
     print(json.dumps(best_params, indent=2))
+    print(f"\nResults logged to:")
+    print(f"  CSV: {csv_log_path}")
+    print(f"  Best params: {best_params_path}")
+    print(f"  Text log: {text_log_path}")
 
 
 if __name__ == "__main__":
