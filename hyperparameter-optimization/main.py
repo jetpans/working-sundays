@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple
 import json
 import csv
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from skopt import Optimizer
 
@@ -161,6 +162,40 @@ def save_best_params(
         print(f"Warning: Failed to save best params: {e}")
 
 
+def ask_unique_candidates(
+    optimizer: Optimizer,
+    names: List[str],
+    seen_keys: set[str],
+    batch_size: int,
+    template_ga: Dict[str, Any],
+) -> List[Tuple[List[Any], Dict[str, Any], str]]:
+    candidates: List[Tuple[List[Any], Dict[str, Any], str]] = []
+    batch_keys: set[str] = set()
+    attempts = 0
+    max_attempts = 100
+
+    while len(candidates) < batch_size and attempts < max_attempts:
+        needed = batch_size - len(candidates)
+        points = optimizer.ask(n_points=needed)
+        if needed == 1 and not isinstance(points[0], list):
+            points = [points]
+
+        for point in points:
+            sample = {name: value for name, value in zip(names, point)}
+            key = build_settings_key(sample, template_ga)
+            if key in seen_keys or key in batch_keys:
+                continue
+            candidates.append((point, sample, key))
+            batch_keys.add(key)
+
+        attempts += 1
+
+    if len(candidates) < batch_size:
+        raise RuntimeError("Unable to find enough new unique configurations to evaluate")
+
+    return candidates
+
+
 def evaluate_candidate(
     client: ApiClient,
     templates: List[InstanceTemplate],
@@ -274,6 +309,7 @@ def main() -> None:
             lf.write(f"HPO started at {datetime.utcnow().isoformat()}\n")
             lf.write(f"Templates: {', '.join(t.path.name for t in templates)}\n")
             lf.write(f"Search space dimensions: {len(names)}\n")
+            lf.write(f"Candidate batch size: {CONFIG.candidate_batch_size}\n")
     except Exception:
         pass
 
@@ -281,40 +317,68 @@ def main() -> None:
     best_params = None
     seen_keys = set()
 
-    for iteration in range(CONFIG.max_iter):
-        sample = None
-        point = None
-        canonical_key = None
+    completed_candidates = 0
+
+    while completed_candidates < CONFIG.max_iter:
         template_ga = templates[0].descriptor.get("settings", {}).get("ga", {})
-        for _ in range(100):
-            point = optimizer.ask()
-            candidate = {name: value for name, value in zip(names, point)}
-            key = build_settings_key(candidate, template_ga)
-            if key not in seen_keys:
-                sample = candidate
-                canonical_key = key
-                break
-        if sample is None or canonical_key is None:
-            raise RuntimeError("Unable to find a new unique configuration to evaluate")
-
-        score, canonical_key, per_template_scores = evaluate_candidate(client, templates, sample, iteration + 1, text_log_path)
-        seen_keys.add(canonical_key)
-
-        # Log to CSV
-        log_to_csv(csv_log_path, iteration + 1, sample, score, per_template_scores)
-
-        objective = -score
-        optimizer.tell(point, objective)
-
-        if best_score is None or score > best_score:
-            best_score = score
-            best_params = sample
-            # Save best params snapshot
-            save_best_params(best_params_path, iteration + 1, best_params, best_score)
+        batch_size = min(CONFIG.candidate_batch_size, CONFIG.max_iter - completed_candidates)
+        candidates = ask_unique_candidates(
+            optimizer,
+            names,
+            seen_keys,
+            batch_size,
+            template_ga,
+        )
 
         print(
-            f"Iter {iteration + 1}/{CONFIG.max_iter}: score={score:.6f} best={best_score:.6f}"
+            f"Starting batch of {len(candidates)} candidates "
+            f"({completed_candidates + 1}-{completed_candidates + len(candidates)}/{CONFIG.max_iter})"
         )
+
+        batch_results: List[Tuple[int, List[Any], Dict[str, Any], str, float, List[Tuple[str, float]]]] = []
+        with ThreadPoolExecutor(max_workers=len(candidates)) as executor:
+            future_to_candidate = {
+                executor.submit(
+                    evaluate_candidate,
+                    client,
+                    templates,
+                    sample,
+                    completed_candidates + index + 1,
+                    text_log_path,
+                ): (index, point, sample, canonical_key)
+                for index, (point, sample, canonical_key) in enumerate(candidates)
+            }
+
+            for future in as_completed(future_to_candidate):
+                index, point, sample, expected_key = future_to_candidate[future]
+                score, canonical_key, per_template_scores = future.result()
+                if canonical_key != expected_key:
+                    raise RuntimeError("Candidate key changed during evaluation")
+                batch_results.append((index, point, sample, canonical_key, score, per_template_scores))
+
+        batch_results.sort(key=lambda result: result[0])
+
+        points = []
+        objectives = []
+        for index, point, sample, canonical_key, score, per_template_scores in batch_results:
+            iteration = completed_candidates + index + 1
+            seen_keys.add(canonical_key)
+            log_to_csv(csv_log_path, iteration, sample, score, per_template_scores)
+
+            points.append(point)
+            objectives.append(-score)
+
+            if best_score is None or score > best_score:
+                best_score = score
+                best_params = sample
+                save_best_params(best_params_path, iteration, best_params, best_score)
+
+            print(
+                f"Iter {iteration}/{CONFIG.max_iter}: score={score:.6f} best={best_score:.6f}"
+            )
+
+        optimizer.tell(points, objectives)
+        completed_candidates += len(batch_results)
 
     print("\nBest score:", best_score)
     print("Best params:")

@@ -18,6 +18,7 @@ class AppConfig:
     poll_interval_sec: float
     run_timeout_sec: float
     max_iter: int
+    candidate_batch_size: int
     n_initial: int
     random_seed: int
     deterministic_default: bool
@@ -35,6 +36,7 @@ CONFIG = AppConfig(
     poll_interval_sec=float(os.getenv("POLL_INTERVAL_SEC", "2.0")),
     run_timeout_sec=float(os.getenv("RUN_TIMEOUT_SEC", "3600")),
     max_iter=int(os.getenv("MAX_ITER", "20")),
+    candidate_batch_size=max(1, int(os.getenv("CANDIDATE_BATCH_SIZE", "1"))),
     n_initial=int(os.getenv("N_INITIAL", "5")),
     random_seed=int(os.getenv("RANDOM_SEED", "42")),
     deterministic_default=os.getenv("DETERMINISTIC_DEFAULT", "true").lower() == "true",

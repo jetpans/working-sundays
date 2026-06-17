@@ -1,10 +1,10 @@
-prvo prodi sve komentare i napravi ih
-svaka slika mora imati referencu
-dodaj izjavu o ai
-dodaj sazetak
-lektoriraj i stilski popravi SVE sa AI
-slozi skriptu za hiperparametre
-opisi proces hparam optimizacije
-primjere dijagrama koje cemo moci dobiti
-sredi sadrzaj
+prvo prodi sve komentare i napravi ih +
+svaka slika mora imati referencu +
+dodaj izjavu o ai +
+dodaj sazetak +
+lektoriraj i stilski popravi SVE sa AI + (lektorirano, necemo AI koristit)
+slozi skriptu za hiperparametre +
+opisi proces hparam optimizacije +-
+primjere dijagrama koje cemo moci dobiti 
+sredi sadrzaj +
 nalijepi literaturu

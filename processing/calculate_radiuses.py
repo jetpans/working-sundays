@@ -3,7 +3,21 @@ import math
 import sys
 import argparse
 import os
-from util import haversine
+try:
+    from util import haversine
+except ModuleNotFoundError:
+    def haversine(lat1, lon1, lat2, lon2):
+        radius_km = 6371.0
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(math.radians(lat1))
+            * math.cos(math.radians(lat2))
+            * math.sin(dlon / 2) ** 2
+        )
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return radius_km * c
 
 
 # ================= CONFIGURATION =================
