@@ -1,0 +1,51 @@
+HPO started at 2026-06-17T14:34:28.111228
+Templates: 48xxx_random_constraints.job, 51000_rijeka_random_constraints.job
+Search space dimensions: 33
+Candidate batch size: 1
+2026-06-17T14:59:41.346915 - Run 1 - job a8dce1a9-e021-49f3-ae96-88a0963c67e4 - fitness_source: stats.optimized - fitness: 101.56804626044445
+2026-06-17T15:24:09.816127 - Run 1 - job 4443a6e8-90cf-41b3-8228-ae02b2cc6f29 - fitness_source: stats.optimized - fitness: 27.68164893189805
+2026-06-17T15:28:39.431394 - Run 2 - job e571b69c-763f-461e-92fb-0418c09a83cf - fitness_source: stats.optimized - fitness: 94.17873019231396
+2026-06-17T15:34:18.901926 - Run 2 - job a73e163d-63d9-403f-abd8-e713b1bf33d8 - fitness_source: stats.optimized - fitness: 25.334223316981365
+2026-06-17T15:34:39.598935 - Run 3 - job 429a8c20-7535-46ed-a793-e9f901ebfa49 - fitness_source: stats.optimized - fitness: 94.56833243431171
+2026-06-17T15:35:04.985529 - Run 3 - job f4b72371-ce6e-429b-8bcd-c56a3913ec9b - fitness_source: stats.optimized - fitness: 26.331988809528635
+2026-06-17T15:42:13.150254 - Run 4 - job 1645ab20-0134-4969-8a70-4db10cc94d71 - fitness_source: stats.optimized - fitness: 95.16216241258658
+2026-06-17T15:55:45.598038 - Run 4 - job 583fef6f-f722-492a-9961-414c7a6d18a3 - fitness_source: stats.optimized - fitness: 25.49916379145707
+2026-06-17T16:00:55.427173 - Run 5 - job a1057f36-7339-4765-8774-4db0fdb2bb31 - fitness_source: stats.optimized - fitness: 100.45460171180467
+2026-06-17T16:07:07.088116 - Run 5 - job ad3a03b1-c95d-4639-a838-c0b5025d5cf8 - fitness_source: stats.optimized - fitness: 27.491739875263193
+2026-06-17T16:07:17.286290 - Run 6 - job 0faf8b7a-ca60-4047-9036-c2858127aca1 - fitness_source: stats.optimized - fitness: 96.3394889106052
+2026-06-17T16:07:27.943294 - Run 6 - job 871061d5-e12a-4899-add4-3032ece8c9f4 - fitness_source: stats.optimized - fitness: 25.910270316682013
+2026-06-17T16:11:11.253422 - Run 7 - job 5abb6812-2e87-4f09-8f79-e5b78943cdc1 - fitness_source: stats.optimized - fitness: 99.38906220342652
+2026-06-17T16:15:22.500778 - Run 7 - job f150736c-2b33-49a6-8374-392856e1a80f - fitness_source: stats.optimized - fitness: 26.285700459397507
+2026-06-17T16:26:05.892566 - Run 8 - job ac985066-2d18-4e31-8fb2-2a48e8a3a6f3 - fitness_source: stats.optimized - fitness: 94.47291449744976
+2026-06-17T16:38:55.888669 - Run 8 - job 78541459-eb2d-4166-bb70-94ef71affe71 - fitness_source: stats.optimized - fitness: 27.110378272825344
+2026-06-17T17:06:55.579494 - Run 9 - job d26fb586-5fc0-4614-ba21-0c39545b2ae4 - fitness_source: stats.optimized - fitness: 90.74369424173645
+2026-06-17T17:34:34.773651 - Run 9 - job dd1ea859-e7d2-4f36-b5d2-30084d64d712 - fitness_source: stats.optimized - fitness: 26.314400039488103
+2026-06-17T17:43:54.022471 - Run 10 - job a3bd0ab5-8ca0-40dc-a44f-0e8be07cacfb - fitness_source: stats.optimized - fitness: 95.57416246901757
+2026-06-17T17:51:19.322760 - Run 10 - job 1d8cba3d-5dc1-4f80-8883-a07a6bbb5588 - fitness_source: stats.optimized - fitness: 25.83053471130918
+2026-06-17T17:51:38.983992 - Run 11 - job 3097aa00-2521-47d5-89c0-3745a6ff24ce - fitness_source: stats.optimized - fitness: 97.78523828440031
+2026-06-17T17:52:04.387283 - Run 11 - job 2e187273-5e17-4892-a35c-a53ef3cfdaaa - fitness_source: stats.optimized - fitness: 26.88298212681381
+2026-06-17T18:13:56.463295 - Run 12 - job b51e50fd-4d0e-42a2-9b1d-66a68d829485 - fitness_source: stats.optimized - fitness: 96.736867475543
+2026-06-17T18:37:23.283036 - Run 12 - job b960a351-7c6b-4c54-991a-9882d6385112 - fitness_source: stats.optimized - fitness: 25.610687425283608
+2026-06-17T18:37:30.111040 - Run 13 - job 192f3cfe-27b0-49b3-a299-cf9e10bf5e8c - fitness_source: stats.optimized - fitness: 94.14381321680938
+2026-06-17T18:37:40.750269 - Run 13 - job a7028a49-d796-4ca6-a044-ebdbc2bd5def - fitness_source: stats.optimized - fitness: 25.523212898093433
+2026-06-17T19:01:41.931867 - Run 14 - job c95b0cd8-ebf1-4d2a-b624-530da3a14111 - fitness_source: stats.optimized - fitness: 100.28635933247439
+2026-06-17T19:25:53.827159 - Run 14 - job df65c5c4-8b4b-44d4-8acd-756cc37179a2 - fitness_source: stats.optimized - fitness: 26.294514559199325
+2026-06-17T19:51:39.554162 - Run 15 - job 7c7f8b21-1d44-472b-9600-5f65b11f254f - fitness_source: stats.optimized - fitness: 94.89470484783003
+2026-06-17T20:18:54.502080 - Run 15 - job 2385b989-53c3-4396-ae7e-ff4992584894 - fitness_source: stats.optimized - fitness: 25.86134009187058
+2026-06-17T20:45:11.866024 - Run 16 - job d859a11e-922e-4603-9fe2-eeee33e033a6 - fitness_source: stats.optimized - fitness: 96.67494246227017
+2026-06-17T21:11:21.907322 - Run 16 - job f4f7216a-2feb-4709-ae67-de22345b0aec - fitness_source: stats.optimized - fitness: 26.303167986727303
+2026-06-17T21:37:45.403265 - Run 17 - job c9533173-3b46-41df-8c59-6dacc57ce60d - fitness_source: stats.optimized - fitness: 100.29583675378734
+2026-06-17T22:04:32.318078 - Run 17 - job b795c69e-bcd0-49e4-8bb1-3b4515c68cc4 - fitness_source: stats.optimized - fitness: 26.76621367095532
+2026-06-17T22:21:43.740120 - Run 18 - job eb437d1b-4279-4abe-990d-504cefbb741f - fitness_source: stats.optimized - fitness: 101.75850983060113
+2026-06-17T22:48:25.765945 - Run 18 - job 454f2513-f5d3-4dd1-9721-b727349f49d2 - fitness_source: stats.optimized - fitness: 28.14659643851373
+2026-06-17T23:00:46.116331 - Run 19 - job cea2685b-b374-4a30-92ae-ee070d9065a3 - fitness_source: stats.optimized - fitness: 93.01052198532406
+2026-06-17T23:28:13.902834 - Run 19 - job b00f02a3-8bdc-45c5-8b5b-c3f35dc20e1f - fitness_source: stats.optimized - fitness: 26.74202644548323
+2026-06-17T23:31:20.382516 - Run 20 - job 933e6c6e-8b8b-4a3b-890b-0b449c6a0215 - fitness_source: stats.optimized - fitness: 90.89473317854358
+2026-06-17T23:38:17.331836 - Run 20 - job e8aeff9a-9564-49de-b0e3-faa085a41645 - fitness_source: stats.optimized - fitness: 25.55656305714443
+2026-06-17T23:45:24.675295 - Run 21 - job 33bbf349-8374-4edb-8ee8-6e7c570dec52 - fitness_source: stats.optimized - fitness: 97.83404025428506
+2026-06-17T23:54:51.298035 - Run 21 - job b2c8ea82-e1d3-4587-8d5d-ddf8059752a2 - fitness_source: stats.optimized - fitness: 24.219704728715104
+2026-06-18T00:22:55.999737 - Run 22 - job 2c2552c8-7c30-49a5-a608-1c239687b486 - fitness_source: stats.optimized - fitness: 94.74806267856337
+2026-06-18T00:50:00.429168 - Run 22 - job 62829ce6-b1e4-4243-b629-97e121c429ab - fitness_source: stats.optimized - fitness: 25.72153118180093
+2026-06-18T01:17:05.968013 - Run 23 - job f8512062-521f-4c2a-a8b9-0d3277bd4298 - fitness_source: stats.optimized - fitness: 98.9788548149138
+2026-06-18T01:43:51.091665 - Run 23 - job c752efef-b18a-4394-b5df-b1e1c3d243de - fitness_source: stats.optimized - fitness: 25.52544729988866
+2026-06-18T02:09:50.736988 - Run 24 - job 1cf2201b-cd7e-4aa0-b91d-65b9a7766fc3 - fitness_source: stats.optimized - fitness: 96.37311795548273

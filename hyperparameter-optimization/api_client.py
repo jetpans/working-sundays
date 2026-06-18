@@ -179,15 +179,12 @@ class ApiClient:
             raise ApiError(f"Result stats fetch failed: {data.get('error')}")
         return data.get("data", {})
 
-    def wait_for_run(self, job_id: str, timeout_sec: float, poll_interval_sec: float) -> RunStatus:
-        start = time.time()
-        last = None
-        while time.time() - start < timeout_sec:
+    def wait_for_run(self, job_id: str, poll_interval_sec: float) -> RunStatus:
+        while True:
             last = self.get_run_info(job_id)
             if last.status in {"Complete", "Error"}:
                 return last
             time.sleep(poll_interval_sec)
-        raise ApiError(f"Run timed out after {timeout_sec:.0f}s (last status: {last.status if last else 'unknown'})")
 
     def delete_job(self, job_id: str) -> None:
         res = requests.delete(

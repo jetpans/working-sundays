@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 import json
 import csv
-from datetime import datetime
+from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from skopt import Optimizer
+from skopt.space import Categorical, Integer, Real
 
 from api_client import ApiClient, ApiError
 from config import CONFIG
@@ -21,6 +22,10 @@ class InstanceTemplate:
     descriptor: Dict[str, Any]
     data: Dict[str, Any]
     constraints: Dict[str, Any]
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def load_instance_template(path: Path) -> InstanceTemplate:
@@ -43,7 +48,7 @@ def load_instance_template(path: Path) -> InstanceTemplate:
     return InstanceTemplate(path=path, descriptor=descriptor, data=data, constraints=constraints)
 
 
-def build_optimizer() -> Tuple[Optimizer, List[str]]:
+def build_optimizer() -> Tuple[Optimizer, List[str], List[Any]]:
     specs = build_search_space()
     dimensions = [spec.dim for spec in specs]
     names = [spec.name for spec in specs]
@@ -53,7 +58,7 @@ def build_optimizer() -> Tuple[Optimizer, List[str]]:
         n_initial_points=CONFIG.n_initial,
         acq_func="gp_hedge",
     )
-    return optimizer, names
+    return optimizer, names, dimensions
 
 
 def materialize_job(
@@ -116,7 +121,7 @@ def log_to_csv(
     # Flatten params for CSV
     row = {
         "iteration": iteration,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utc_now().isoformat(),
         "avg_fitness": avg_fitness,
     }
     
@@ -141,6 +146,120 @@ def log_to_csv(
         print(f"Warning: Failed to log to CSV: {e}")
 
 
+def append_to_cache(
+    cache_path: Path,
+    iteration: int,
+    sample: Dict[str, Any],
+    avg_fitness: float,
+    per_template_scores: List[Tuple[str, float]],
+) -> None:
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    log_to_csv(cache_path, iteration, sample, avg_fitness, per_template_scores)
+
+
+def bootstrap_cache_if_needed(cache_path: Path, bootstrap_path: Path) -> None:
+    if cache_path.exists():
+        return
+    if not bootstrap_path.exists():
+        print(f"Cache not found and bootstrap CSV missing: {bootstrap_path}")
+        return
+
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with bootstrap_path.open("r", newline="", encoding="utf-8") as source:
+            with cache_path.open("w", newline="", encoding="utf-8") as target:
+                target.write(source.read())
+        print(f"Bootstrapped HPO cache from {bootstrap_path}")
+    except Exception as e:
+        print(f"Warning: Failed to bootstrap HPO cache from {bootstrap_path}: {e}")
+
+
+def parse_dimension_value(raw_value: str, dimension: Any) -> Any:
+    if raw_value is None or raw_value == "":
+        raise ValueError("missing value")
+
+    if isinstance(dimension, Integer):
+        return int(float(raw_value))
+    if isinstance(dimension, Real):
+        return float(raw_value)
+    if isinstance(dimension, Categorical):
+        categories = list(dimension.categories)
+        for category in categories:
+            if str(category) == raw_value:
+                return category
+        raise ValueError(f"{raw_value!r} is not in {categories!r}")
+
+    return raw_value
+
+
+def parse_cached_sample(
+    row: Dict[str, str],
+    names: Sequence[str],
+    dimensions: Sequence[Any],
+) -> Tuple[List[Any], Dict[str, Any], float]:
+    point: List[Any] = []
+    sample: Dict[str, Any] = {}
+
+    for name, dimension in zip(names, dimensions):
+        if name not in row:
+            raise ValueError(f"missing column {name}")
+        value = parse_dimension_value(row[name], dimension)
+        point.append(value)
+        sample[name] = value
+
+    if "avg_fitness" not in row:
+        raise ValueError("missing column avg_fitness")
+
+    avg_fitness = float(row["avg_fitness"])
+    return point, sample, avg_fitness
+
+
+def load_cached_observations(
+    cache_path: Path,
+    names: Sequence[str],
+    dimensions: Sequence[Any],
+    template_ga: Dict[str, Any],
+) -> Tuple[List[List[Any]], List[float], Dict[str, Dict[str, Any]], Dict[str, Any]]:
+    points: List[List[Any]] = []
+    objectives: List[float] = []
+    samples_by_key: Dict[str, Dict[str, Any]] = {}
+    best: Dict[str, Any] = {"score": None, "params": None}
+    skipped = 0
+
+    if not cache_path.exists():
+        return points, objectives, samples_by_key, best
+
+    try:
+        with cache_path.open("r", newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row_number, row in enumerate(reader, start=2):
+                try:
+                    point, sample, avg_fitness = parse_cached_sample(row, names, dimensions)
+                    canonical_key = build_settings_key(sample, template_ga)
+                    if canonical_key in samples_by_key:
+                        skipped += 1
+                        print(f"Warning: Skipping duplicate cache row {row_number}")
+                        continue
+
+                    points.append(point)
+                    objectives.append(-avg_fitness)
+                    samples_by_key[canonical_key] = sample
+                    if best["score"] is None or avg_fitness > best["score"]:
+                        best = {"score": avg_fitness, "params": sample}
+                except Exception as e:
+                    skipped += 1
+                    print(f"Warning: Skipping incompatible cache row {row_number}: {e}")
+    except Exception as e:
+        print(f"Warning: Failed to load HPO cache {cache_path}: {e}")
+        return [], [], {}, {"score": None, "params": None}
+
+    print(f"Loaded {len(points)} cached HPO observations from {cache_path}")
+    if skipped:
+        print(f"Skipped {skipped} cache rows")
+
+    return points, objectives, samples_by_key, best
+
+
 def save_best_params(
     best_params_path: Path,
     iteration: int,
@@ -152,7 +271,7 @@ def save_best_params(
         best_params_path.write_text(
             json.dumps({
                 "iteration": iteration,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
                 "best_score": best_score,
                 "params": best_params,
             }, indent=2),
@@ -226,13 +345,11 @@ def evaluate_candidate(
             try:
                 with log_path.open("a", encoding="utf-8") as lf:
                     lf.write(
-                        f"{datetime.utcnow().isoformat()} - Run {run_number} - template {template_name} - job {job_id} - params: {json.dumps(sample)}\n")
+                        f"{utc_now().isoformat()} - Run {run_number} - template {template_name} - job {job_id} - params: {json.dumps(sample)}\n")
             except Exception:
                 pass
             client.run_job(job_id)
-            status = client.wait_for_run(
-                job_id, CONFIG.run_timeout_sec, CONFIG.poll_interval_sec
-            )
+            status = client.wait_for_run(job_id, CONFIG.poll_interval_sec)
             if status.status != "Complete":
                 raise ApiError(f"Run failed with status {status.status}")
 
@@ -260,7 +377,7 @@ def evaluate_candidate(
             try:
                 with log_path.open("a", encoding="utf-8") as lf:
                     lf.write(
-                        f"{datetime.utcnow().isoformat()} - Run {run_number} - job {job_id} - fitness_source: {used_source} - fitness: {fitness}\n")
+                        f"{utc_now().isoformat()} - Run {run_number} - job {job_id} - fitness_source: {used_source} - fitness: {fitness}\n")
             except Exception:
                 pass
             scores.append((template_name, fitness))
@@ -288,14 +405,14 @@ def main() -> None:
     client = ApiClient(CONFIG.api_base_url, CONFIG.username, CONFIG.password)
     client.login()
 
-    optimizer, names = build_optimizer()
+    optimizer, names, dimensions = build_optimizer()
 
     # Prepare logging
     hpo_dir = Path(__file__).resolve().parent
     log_dir = hpo_dir / "log"
     log_dir.mkdir(parents=True, exist_ok=True)
     
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
     text_logfile = f"hpo_{timestamp}.txt"
     csv_logfile = f"hpo_{timestamp}.csv"
     best_params_file = f"best_params_{timestamp}.json"
@@ -303,24 +420,45 @@ def main() -> None:
     text_log_path = log_dir / text_logfile
     csv_log_path = log_dir / csv_logfile
     best_params_path = log_dir / best_params_file
+    cache_path = CONFIG.cache_csv
+    cache_bootstrap_path = CONFIG.cache_bootstrap_csv
+    template_ga = templates[0].descriptor.get("settings", {}).get("ga", {})
+
+    bootstrap_cache_if_needed(cache_path, cache_bootstrap_path)
+    cached_points, cached_objectives, cached_samples, cached_best = load_cached_observations(
+        cache_path,
+        names,
+        dimensions,
+        template_ga,
+    )
+    if cached_points:
+        optimizer.tell(cached_points, cached_objectives)
     
     try:
         with text_log_path.open("a", encoding="utf-8") as lf:
-            lf.write(f"HPO started at {datetime.utcnow().isoformat()}\n")
+            lf.write(f"HPO started at {utc_now().isoformat()}\n")
             lf.write(f"Templates: {', '.join(t.path.name for t in templates)}\n")
             lf.write(f"Search space dimensions: {len(names)}\n")
             lf.write(f"Candidate batch size: {CONFIG.candidate_batch_size}\n")
+            lf.write(f"Cache CSV: {cache_path}\n")
+            lf.write(f"Loaded cached observations: {len(cached_points)}\n")
     except Exception:
         pass
 
-    best_score = None
-    best_params = None
-    seen_keys = set()
+    best_score = cached_best["score"]
+    best_params = cached_best["params"]
+    seen_keys = set(cached_samples.keys())
 
     completed_candidates = 0
+    cache_iteration_start = len(cached_points)
+
+    if cached_points:
+        print(
+            f"Starting HPO with {len(cached_points)} cached observations "
+            f"and {CONFIG.max_iter} new candidates planned"
+        )
 
     while completed_candidates < CONFIG.max_iter:
-        template_ga = templates[0].descriptor.get("settings", {}).get("ga", {})
         batch_size = min(CONFIG.candidate_batch_size, CONFIG.max_iter - completed_candidates)
         candidates = ask_unique_candidates(
             optimizer,
@@ -332,7 +470,8 @@ def main() -> None:
 
         print(
             f"Starting batch of {len(candidates)} candidates "
-            f"({completed_candidates + 1}-{completed_candidates + len(candidates)}/{CONFIG.max_iter})"
+            f"({completed_candidates + 1}-{completed_candidates + len(candidates)}/{CONFIG.max_iter} new, "
+            f"{len(cached_points)} cached)"
         )
 
         batch_results: List[Tuple[int, List[Any], Dict[str, Any], str, float, List[Tuple[str, float]]]] = []
@@ -362,8 +501,10 @@ def main() -> None:
         objectives = []
         for index, point, sample, canonical_key, score, per_template_scores in batch_results:
             iteration = completed_candidates + index + 1
+            cache_iteration = cache_iteration_start + iteration
             seen_keys.add(canonical_key)
             log_to_csv(csv_log_path, iteration, sample, score, per_template_scores)
+            append_to_cache(cache_path, cache_iteration, sample, score, per_template_scores)
 
             points.append(point)
             objectives.append(-score)
@@ -371,10 +512,11 @@ def main() -> None:
             if best_score is None or score > best_score:
                 best_score = score
                 best_params = sample
-                save_best_params(best_params_path, iteration, best_params, best_score)
+                save_best_params(best_params_path, cache_iteration, best_params, best_score)
 
             print(
-                f"Iter {iteration}/{CONFIG.max_iter}: score={score:.6f} best={best_score:.6f}"
+                f"Iter {iteration}/{CONFIG.max_iter} new "
+                f"(cache #{cache_iteration}): score={score:.6f} best={best_score:.6f}"
             )
 
         optimizer.tell(points, objectives)
@@ -385,6 +527,7 @@ def main() -> None:
     print(json.dumps(best_params, indent=2))
     print(f"\nResults logged to:")
     print(f"  CSV: {csv_log_path}")
+    print(f"  Cache: {cache_path}")
     print(f"  Best params: {best_params_path}")
     print(f"  Text log: {text_log_path}")
 

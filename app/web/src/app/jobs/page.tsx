@@ -59,7 +59,13 @@ export default function JobsPage() {
             };
           }),
         );
-        setJobs(jobsWithInfo);
+        setJobs(
+          jobsWithInfo.sort(
+            (a, b) =>
+              (Date.parse(b.created_at) || 0) -
+              (Date.parse(a.created_at) || 0),
+          ),
+        );
       }
     } catch (error) {
       toast.error(

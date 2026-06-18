@@ -1,0 +1,10 @@
+HPO started at 2026-06-17T14:37:24.301039
+Templates: 48xxx_random_constraints.job, 51000_rijeka_random_constraints.job
+Search space dimensions: 33
+Candidate batch size: 4
+2026-06-17T14:42:38.833815 - Run 4 - job 664372d6-62ef-4897-b89d-5cbd054c20ae - fitness_source: stats.optimized - fitness: 92.17736461875029
+2026-06-17T14:44:17.118478 - Run 3 - job 00d3bfd8-761b-45f1-b84a-e90b8470027e - fitness_source: stats.optimized - fitness: 94.81724624983316
+2026-06-17T14:49:05.175860 - Run 4 - job 9faf2108-c255-4f6c-9fd3-1348aa7683b4 - fitness_source: stats.optimized - fitness: 26.30840258751408
+2026-06-17T14:59:23.203861 - Run 3 - job 8d5af1d3-be47-47bc-8b95-f6de81a44cfa - fitness_source: stats.optimized - fitness: 25.19430044872792
+2026-06-17T15:11:57.660318 - Run 1 - job 27c00792-2051-47cc-99c9-d82df19ea06f - fitness_source: stats.optimized - fitness: 98.16755192484165
+2026-06-17T15:41:40.727817 - Run 1 - job 025ae112-f241-4f3e-8c2b-bb730b998a6f - fitness_source: stats.optimized - fitness: 25.078284036422865

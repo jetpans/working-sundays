@@ -15,8 +15,9 @@ class AppConfig:
     username: str
     password: str
     instances_dir: Path
+    cache_csv: Path
+    cache_bootstrap_csv: Path
     poll_interval_sec: float
-    run_timeout_sec: float
     max_iter: int
     candidate_batch_size: int
     n_initial: int
@@ -28,13 +29,23 @@ class AppConfig:
 ROOT_DIR = Path(__file__).resolve().parent
 
 
+def resolve_path(value: str) -> Path:
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    return ROOT_DIR / path
+
+
 CONFIG = AppConfig(
     api_base_url=os.getenv("API_BASE_URL", "http://localhost:5000"),
     username=os.getenv("API_USERNAME", ""),
     password=os.getenv("API_PASSWORD", ""),
-    instances_dir=Path(os.getenv("HPO_INSTANCES_DIR", str(ROOT_DIR / "instances"))),
+    instances_dir=resolve_path(os.getenv("HPO_INSTANCES_DIR", "instances")),
+    cache_csv=resolve_path(os.getenv("HPO_CACHE_CSV", "log/cache.csv")),
+    cache_bootstrap_csv=resolve_path(
+        os.getenv("HPO_CACHE_BOOTSTRAP_CSV", "log/hpo_20260617_143428.csv")
+    ),
     poll_interval_sec=float(os.getenv("POLL_INTERVAL_SEC", "2.0")),
-    run_timeout_sec=float(os.getenv("RUN_TIMEOUT_SEC", "3600")),
     max_iter=int(os.getenv("MAX_ITER", "20")),
     candidate_batch_size=max(1, int(os.getenv("CANDIDATE_BATCH_SIZE", "1"))),
     n_initial=int(os.getenv("N_INITIAL", "5")),
