@@ -14,6 +14,7 @@ from flask_jwt_extended import decode_token
 
 from config import AppConfig
 from controllers.jobCreationController import jobCreationService
+from controllers.resultStatsService import precompute_default_stats
 from security import api_user_required
 import os
 
@@ -207,7 +208,21 @@ class JobsController:
                                 )
 
                     exit_code = proc.wait()
-                    status = "Complete" if exit_code == 0 else "Error"
+                    if exit_code == 0:
+                        self._update_run_status(job_dir, "Calculating stats")
+                        self._emit_run_status(key, "Calculating stats", self._utc_now())
+                        try:
+                            precompute_default_stats(job_dir)
+                        except Exception as e:
+                            try:
+                                with run_log_path.open("a", encoding="utf-8") as rl:
+                                    rl.write(f"\n--- STATS PRECOMPUTE FAILED: {e} ---\n")
+                            except Exception:
+                                pass
+                        status = "Complete"
+                    else:
+                        status = "Error"
+
                     self._update_run_status(job_dir, status)
                     self._emit_run_status(key, status, self._utc_now())
                 except Exception:

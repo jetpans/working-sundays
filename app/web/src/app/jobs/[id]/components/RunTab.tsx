@@ -12,7 +12,13 @@ interface RunTabProps {
   onStatusChange?: (status: RunStatus) => void;
 }
 
-type RunStatus = "Uninitialized" | "Ready" | "Running" | "Error" | "Complete";
+type RunStatus =
+  | "Uninitialized"
+  | "Ready"
+  | "Running"
+  | "Calculating stats"
+  | "Error"
+  | "Complete";
 
 export default function RunTab({
   username,
@@ -32,7 +38,7 @@ export default function RunTab({
   const logRef = useRef<HTMLDivElement | null>(null);
   const followLogsRef = useRef(true);
 
-  const isRunning = status === "Running";
+  const isRunning = status === "Running" || status === "Calculating stats";
 
   const fetchStatus = useCallback(async () => {
     try {

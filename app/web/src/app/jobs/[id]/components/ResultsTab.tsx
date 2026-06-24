@@ -4,6 +4,12 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, Fragment } from "react";
 import { useApiFetch } from "@/hooks/useApiFetch";
 import { getStoreColor } from "@/lib/jobUtils";
+import {
+  DeltaDistributionChart,
+  FitnessHistoryChart,
+  type FitnessPoint,
+  type SundayDeltaPoint,
+} from "./ResultsCharts";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
@@ -47,6 +53,12 @@ export default function ResultsTab({
   const [randomPolygons, setRandomPolygons] = useState<any[]>([]);
   const [optPolygons, setOptPolygons] = useState<any[]>([]);
   const [stats, setStats] = useState<any | null>(null);
+  const [statsState, setStatsState] = useState<
+    "idle" | "loading" | "calculating" | "ready" | "error"
+  >("idle");
+  const [statsMessage, setStatsMessage] = useState<string | null>(null);
+  const [fitnessPoints, setFitnessPoints] = useState<FitnessPoint[]>([]);
+  const [fitnessMessage, setFitnessMessage] = useState<string | null>(null);
   const [mapHover, setMapHover] = useState(false);
 
   useEffect(() => {
@@ -87,8 +99,35 @@ export default function ResultsTab({
     loadList();
   }, [server, username, jobId]);
 
+  useEffect(() => {
+    const loadFitnessHistory = async () => {
+      try {
+        setFitnessMessage(null);
+        const res = await apiFetch(
+          `/api/job/${username}/${jobId}/results/fitness-history`,
+        );
+        const body = await res.json();
+        if (!res.ok || body?.success === false) {
+          setFitnessPoints([]);
+          setFitnessMessage(body?.error || `Failed to load fitness history (${res.status})`);
+          return;
+        }
+
+        setFitnessPoints(body?.data?.points || []);
+      } catch {
+        setFitnessPoints([]);
+        setFitnessMessage("Failed to load fitness history.");
+      }
+    };
+
+    loadFitnessHistory();
+  }, [server, username, jobId]);
+
   // load polygons and stats when files change
   useEffect(() => {
+    let cancelled = false;
+    let statsPollTimer: ReturnType<typeof setTimeout> | null = null;
+
     const loadPolys = async (
       name: string | null,
       setter: (v: any[]) => void,
@@ -112,19 +151,54 @@ export default function ResultsTab({
 
     const loadStats = async () => {
       try {
-        if (!randomFile || !optFile) return setStats(null);
+        if (!randomFile || !optFile) {
+          setStats(null);
+          setStatsState("idle");
+          setStatsMessage("Select both result files to calculate statistics.");
+          return;
+        }
+        setStatsState((current) =>
+          current === "calculating" ? "calculating" : "loading",
+        );
+        setStatsMessage(null);
         const res = await apiFetch(
           `/api/job/${username}/${jobId}/results/stats?random=${encodeURIComponent(randomFile)}&optimized=${encodeURIComponent(optFile)}`,
         );
-        if (!res.ok) return setStats(null);
         const body = await res.json();
+        if (cancelled) return;
+
+        if (res.status === 202 || body?.status === "calculating") {
+          setStats(null);
+          setStatsState("calculating");
+          setStatsMessage("Statistics are being calculated. This can take a moment for large jobs.");
+          statsPollTimer = setTimeout(loadStats, 3000);
+          return;
+        }
+
+        if (!res.ok || body?.success === false) {
+          setStats(null);
+          setStatsState("error");
+          setStatsMessage(body?.error || `Failed to load statistics (${res.status})`);
+          return;
+        }
+
         setStats(body?.data || null);
+        setStatsState(body?.data ? "ready" : "idle");
+        setStatsMessage(body?.data ? null : "No statistics were returned.");
       } catch {
+        if (cancelled) return;
         setStats(null);
+        setStatsState("error");
+        setStatsMessage("Failed to load statistics.");
       }
     };
 
     loadStats();
+
+    return () => {
+      cancelled = true;
+      if (statsPollTimer) clearTimeout(statsPollTimer);
+    };
   }, [server, username, jobId, randomFile, optFile]);
 
   const mapCenter = useMemo(() => {
@@ -174,6 +248,18 @@ export default function ResultsTab({
       percent: number | null;
     }>;
   }, [selectedSundays, stats]);
+
+  const sundayDeltaPoints = useMemo(() => {
+    const perSunday = Array.isArray(stats?.per_sunday) ? stats.per_sunday : [];
+    return perSunday
+      .map((entry: any) => {
+        const sunday = Number(entry?.sunday);
+        const delta = Number(entry?.delta);
+        if (!Number.isFinite(sunday) || !Number.isFinite(delta)) return null;
+        return { sunday, delta };
+      })
+      .filter(Boolean) as SundayDeltaPoint[];
+  }, [stats]);
 
   const formatStat = (value: number | null | undefined) =>
     value === null || value === undefined || Number.isNaN(value)
@@ -264,8 +350,18 @@ export default function ResultsTab({
                 </div>
               </div>
             </div>
+          ) : statsState === "loading" || statsState === "calculating" ? (
+            <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              {statsMessage || "Statistics are being calculated."}
+            </div>
+          ) : statsState === "error" ? (
+            <div className="rounded border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+              {statsMessage || "Statistics could not be calculated."}
+            </div>
           ) : (
-            <div className="text-sm text-slate-500">No stats available</div>
+            <div className="text-sm text-slate-500">
+              {statsMessage || "No stats available"}
+            </div>
           )}
 
           {/* quick toggles */}
@@ -291,6 +387,42 @@ export default function ResultsTab({
               </label>
             </div>
           </div>
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+          <div>
+            <h4 className="font-semibold text-lg">Fitness Over Iterations</h4>
+            <div className="text-sm text-slate-500">
+              Parsed from new-best fitness entries in run.log.
+            </div>
+          </div>
+          {fitnessMessage ? (
+            <div className="rounded border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+              {fitnessMessage}
+            </div>
+          ) : (
+            <FitnessHistoryChart points={fitnessPoints} />
+          )}
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+          <div>
+            <h4 className="font-semibold text-lg">Sunday Delta Distribution</h4>
+            <div className="text-sm text-slate-500">
+              Optimized minus random per Sunday, centered at zero.
+            </div>
+          </div>
+          {statsState === "loading" || statsState === "calculating" ? (
+            <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              Waiting for statistics before drawing the distribution.
+            </div>
+          ) : statsState === "error" ? (
+            <div className="rounded border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+              {statsMessage || "Statistics could not be calculated."}
+            </div>
+          ) : (
+            <DeltaDistributionChart points={sundayDeltaPoints} />
+          )}
         </div>
       </div>
 
@@ -432,7 +564,9 @@ export default function ResultsTab({
                   <div className="border-t border-slate-200 pt-2 space-y-2">
                     {selectedSundayStats.length === 0 ? (
                       <div className="text-slate-500 text-xs">
-                        Stats not available yet
+                        {statsState === "calculating"
+                          ? "Stats are being calculated"
+                          : "Stats not available yet"}
                       </div>
                     ) : (
                       selectedSundayStats.map((entry) => {

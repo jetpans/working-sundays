@@ -1,9 +1,17 @@
 import json
+import re
 
-import numpy as np
 from flask import request
 
 from controllers.jobCreationController import jobCreationService
+from controllers.resultStatsService import (
+    DEFAULT_OPTIMIZED_RESULT,
+    DEFAULT_RANDOM_RESULT,
+    compute_and_cache_stats,
+    ensure_default_stats_async,
+    get_stats_cache,
+    get_stats_status,
+)
 from security import api_user_required
 
 
@@ -18,6 +26,12 @@ class JobResultController:
         self.register_routes()
 
     def register_routes(self):
+        iteration_pattern = re.compile(r"Iteration:\s*(\d+)", re.IGNORECASE)
+        fitness_pattern = re.compile(
+            r"New alpha has fitness of:\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)",
+            re.IGNORECASE,
+        )
+
         def _square_corners_latlon(lat, lon, half_side_m):
             from math import radians, degrees, sin, cos
             R = 6371000.0
@@ -118,93 +132,69 @@ class JobResultController:
         @api_user_required()
         def get_results_stats(username: str, jobid: str):
             try:
-                rand_name = request.args.get("random") or "random_start.json"
-                opt_name = request.args.get("optimized") or "solution.json"
+                rand_name = request.args.get("random") or DEFAULT_RANDOM_RESULT
+                opt_name = request.args.get("optimized") or DEFAULT_OPTIMIZED_RESULT
                 job_dir = jobCreationService.resolve_job_dir(username, jobid)
-                results_dir = job_dir / "results"
-                rand_path = results_dir / rand_name
-                opt_path = results_dir / opt_name
+                cached = get_stats_cache(job_dir, rand_name, opt_name)
+                if cached is not None:
+                    return {"success": True, "data": cached}, 200
 
-                data_path = job_dir / "data.json"
-                constraints_path = job_dir / "constraints.json"
-                if not data_path.exists() or not constraints_path.exists():
-                    return {"success": False, "error": "data or constraints missing"}, 400
-                data = jobCreationService._read_json(data_path)
-                constraints = jobCreationService._read_json(constraints_path)
-                total_sundays = constraints.get("SUNDAYS", 0)
+                is_default_pair = (
+                    rand_name == DEFAULT_RANDOM_RESULT
+                    and opt_name == DEFAULT_OPTIMIZED_RESULT
+                )
+                if is_default_pair:
+                    state = ensure_default_stats_async(job_dir)
+                    if state["state"] == "ready":
+                        return {"success": True, "data": state["stats"]}, 200
 
-                cache_file = results_dir / "_stats_cache.json"
-                rand_mtime = rand_path.stat().st_mtime if rand_path.exists() else None
-                opt_mtime = opt_path.stat().st_mtime if opt_path.exists() else None
+                    status = state.get("status") or get_stats_status(job_dir) or {}
+                    if status.get("state") == "error":
+                        return {"success": False, "error": status.get("error", "stats calculation failed")}, 500
+                    return {
+                        "success": True,
+                        "status": "calculating",
+                        "data": {"status": status},
+                    }, 202
 
-                if cache_file.exists():
-                    try:
-                        cache = jobCreationService._read_json(cache_file)
-                        if cache.get("rand_mtime") == rand_mtime and cache.get("opt_mtime") == opt_mtime:
-                            return {"success": True, "data": cache.get("stats")}, 200
-                    except Exception:
-                        pass
-
-                from util import fast_create_boxes, fast_union_intersect
-
-                def compute_fitness_for_solution(sol_path):
-                    if not sol_path.exists():
-                        return [0.0 for _ in range(total_sundays)], 0.0
-                    sol = jobCreationService._read_json(sol_path)
-                    per_sunday = []
-                    store_ids = list(sol.keys())
-                    coords = [data[sid]["coordinates"] for sid in store_ids]
-                    for sunday in range(total_sundays):
-                        radii = []
-                        for sid in store_ids:
-                            try:
-                                radii.append(data[sid]["radius_km"] if sunday in sol.get(sid, []) else 0.0)
-                            except Exception:
-                                radii.append(0.0)
-                        try:
-                            boxes = fast_create_boxes([c for c in coords], np.array(radii))
-                            union, intersect = fast_union_intersect(boxes)
-                            per_sunday.append(union - intersect)
-                        except Exception:
-                            per_sunday.append(0.0)
-                    overall = sum(per_sunday) / max(1, len(per_sunday))
-                    return per_sunday, overall
-
-                rand_per, rand_overall = compute_fitness_for_solution(rand_path)
-                opt_per, opt_overall = compute_fitness_for_solution(opt_path)
-
-                delta_per = [o - r for o, r in zip(opt_per, rand_per)]
-
-                stats = {}
-                stats["overall"] = {"random": rand_overall,
-                                    "optimized": opt_overall, "delta": opt_overall - rand_overall}
-                stats["per_sunday"] = [{"sunday": i, "random": rand_per[i],
-                                        "optimized": opt_per[i], "delta": delta_per[i]} for i in range(len(delta_per))]
-
-                arr = np.array(delta_per)
-                stats["delta_summary"] = {
-                    "sum": float(np.sum(arr)),
-                    "mean": float(np.mean(arr)),
-                    "median": float(np.median(arr)),
-                    "min": float(np.min(arr)),
-                    "max": float(np.max(arr)),
-                }
-
-                pct = []
-                for r, o in zip(rand_per, opt_per):
-                    if r == 0:
-                        pct.append(None)
-                    else:
-                        pct.append((o - r) / abs(r) * 100.0)
-                stats["per_sunday_pct"] = pct
-
-                try:
-                    jobCreationService._write_json(
-                        cache_file, {"rand_mtime": rand_mtime, "opt_mtime": opt_mtime, "stats": stats})
-                except Exception:
-                    pass
-
+                stats = compute_and_cache_stats(job_dir, rand_name, opt_name)
                 return {"success": True, "data": stats}, 200
+            except Exception as e:
+                return {"success": False, "error": str(e)}, 500
+
+        @self.app.get("/api/job/<username>/<jobid>/results/fitness-history")
+        @api_user_required()
+        def get_fitness_history(username: str, jobid: str):
+            try:
+                job_dir = jobCreationService.resolve_job_dir(username, jobid)
+                run_log_path = job_dir / "run.log"
+                if not run_log_path.exists():
+                    return {"success": True, "data": {"points": []}}, 200
+
+                points = []
+                last_iteration = None
+                lines = run_log_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+                for line_number, line in enumerate(lines, 1):
+                    iteration_match = iteration_pattern.search(line)
+                    if iteration_match:
+                        last_iteration = int(iteration_match.group(1))
+
+                    fitness_match = fitness_pattern.search(line)
+                    if not fitness_match:
+                        continue
+
+                    points.append(
+                        {
+                            "step": len(points) + 1,
+                            "iteration": last_iteration,
+                            "fitness": float(fitness_match.group(1)),
+                            "line": line_number,
+                        }
+                    )
+
+                return {"success": True, "data": {"points": points}}, 200
+            except FileNotFoundError:
+                return {"success": False, "error": "job not found"}, 404
             except Exception as e:
                 return {"success": False, "error": str(e)}, 500
 

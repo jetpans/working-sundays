@@ -69,5 +69,7 @@ EXPOSE 5000
 ENV JAVA_BIN=java
 ENV JAVA_JAR=/app/api/algorithm.jar
 
-# Run under Gunicorn with the gevent-websocket worker for production Socket.IO support
-CMD ["gunicorn", "--worker-class", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "--workers", "1", "--bind", "0.0.0.0:5000", "app:app"]
+# Run under Gunicorn with the gevent-websocket worker for production Socket.IO support.
+# Stats are precomputed after runs and lazily generated for older result folders;
+# the longer timeout protects explicit uncached stats requests.
+CMD ["gunicorn", "--timeout", "180", "--worker-class", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "--workers", "1", "--bind", "0.0.0.0:5000", "app:app"]

@@ -2275,7 +2275,7 @@
       ]
     }
   },
-  "created_at": "2026-06-17T14:11:11.046975+00:00",
+  "created_at": "2026-06-22T14:50:52.268868+00:00",
   "data": {
     "way/42506706": {
       "name": "Plodine",
@@ -3202,10 +3202,10 @@
     }
   },
   "description": "Generated HPO instance for stores whose formatted_address matches '48***'.",
-  "id": "ae82c9fc-cd81-4680-bc84-af424a989218",
+  "id": "a6be62bf-7e20-480b-ac1e-fe0b343dc73b",
   "run_info": {
     "status": "Not started",
-    "updated_at": "2026-06-17T14:11:11.046975+00:00"
+    "updated_at": "2026-06-22T14:50:52.268868+00:00"
   },
   "settings": {
     "ga": {
