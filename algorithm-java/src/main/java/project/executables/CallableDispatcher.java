@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 import project.Util;
 import project.genetic.chromosome.MatrixChromosome;
 import project.genetic.generator.AllSundaysHaveWorkGenerator;
+import project.genetic.logger.FitnessHistoryLogger;
 import project.models.Cluster;
 import project.models.Global;
 import project.models.Problem;
@@ -71,6 +72,12 @@ public class CallableDispatcher {
         }
 
         MatrixChromosome randomSol = new AllSundaysHaveWorkGenerator(Problem.getInstance().storeIds).generate();
+        settings.logger = new FitnessHistoryLogger(
+                new MatrixChromosome(randomSol),
+                settings.fitness,
+                Path.of(instanceFolder, "results", "fitness_history.csv")
+        );
+
         // write random solution only when requested; write into instance results folder
         try {
             Path resultsDir = Path.of(instanceFolder, "results");
@@ -155,7 +162,14 @@ public class CallableDispatcher {
             Path resultsDir = Path.of(instanceFolder, "results");
             if (!resultsDir.toFile().exists()) resultsDir.toFile().mkdirs();
             String out = Path.of(instanceFolder, "results", "solution.json").toString();
-            storeFinalSolution(solved, out);
+            MatrixChromosome finalSolution = storeFinalSolution(solved, out);
+            settings.logger.logAlpha(-1, finalSolution);
+            if (settings.logger instanceof FitnessHistoryLogger fitnessHistoryLogger) {
+                MatrixChromosome incumbent = fitnessHistoryLogger.getBestPrototype();
+                if (incumbent != null) {
+                    MatrixChromosome.toFile(incumbent, out);
+                }
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

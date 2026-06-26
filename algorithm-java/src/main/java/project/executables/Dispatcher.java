@@ -99,7 +99,7 @@ public class Dispatcher {
         return algo.run().getLast();
     }
 
-    public static void storeFinalSolution(List<Cluster> solvedClusters, String outputPath) {
+    public static MatrixChromosome storeFinalSolution(List<Cluster> solvedClusters, String outputPath) {
         List<String> finalStoreIds = new ArrayList<>();
         for (Cluster c : solvedClusters) {
             finalStoreIds.addAll(c.storeIds);
@@ -114,5 +114,6 @@ public class Dispatcher {
         }
 
         MatrixChromosome.toFile(finalSolution, outputPath);
+        return finalSolution;
     }
 }

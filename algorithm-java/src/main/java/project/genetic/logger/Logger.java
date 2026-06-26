@@ -1,5 +1,7 @@
 package project.genetic.logger;
 
+import project.genetic.chromosome.Chromosome;
+
 import java.io.OutputStream;
 
 public abstract class Logger {
@@ -32,5 +34,8 @@ public abstract class Logger {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void logAlpha(int iteration, Chromosome alpha) {
     }
 }

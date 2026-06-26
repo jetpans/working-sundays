@@ -36,6 +36,10 @@ interface ResultsTabProps {
   server: string;
 }
 
+function isSolutionResultFile(fileName: string): boolean {
+  return fileName.endsWith(".json") && !fileName.startsWith("_");
+}
+
 export default function ResultsTab({
   username,
   jobId,
@@ -87,13 +91,14 @@ export default function ResultsTab({
         if (!res.ok) return;
         const body = await res.json();
         const files: string[] = body?.data || [];
-        setResults(files);
+        const solutionFiles = files.filter(isSolutionResultFile);
+        setResults(solutionFiles);
         // pick defaults if present
-        if (files.includes("random_start.json"))
+        if (solutionFiles.includes("random_start.json"))
           setRandomFile("random_start.json");
-        else if (files.length > 0) setRandomFile(files[0]);
-        if (files.includes("solution.json")) setOptFile("solution.json");
-        else if (files.length > 0) setOptFile(files[files.length - 1]);
+        else if (solutionFiles.length > 0) setRandomFile(solutionFiles[0]);
+        if (solutionFiles.includes("solution.json")) setOptFile("solution.json");
+        else if (solutionFiles.length > 0) setOptFile(solutionFiles[solutionFiles.length - 1]);
       } catch {}
     };
     loadList();
@@ -393,7 +398,7 @@ export default function ResultsTab({
           <div>
             <h4 className="font-semibold text-lg">Fitness Over Iterations</h4>
             <div className="text-sm text-slate-500">
-              Parsed from new-best fitness entries in run.log.
+              Global fitness from results/fitness_history.csv.
             </div>
           </div>
           {fitnessMessage ? (

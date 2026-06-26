@@ -74,6 +74,7 @@ public class DemoAlgorithm<T extends Chromosome> {
 //            s.logger.println(LogLevel.DEBUG, "Last is " + population.getLast() + " with fitness of " + population.getLast().fitness);
             if (alpha == null || population.getLast().fitness > alpha.fitness) { // If we got new alpha, print that.
                 alpha = population.getLast();
+                s.logger.logAlpha(iteration, alpha);
                 if (!lastWasAlpha) {
                     s.logger.printf(LogLevel.VERBOSE, "\n");
                 }
@@ -81,6 +82,10 @@ public class DemoAlgorithm<T extends Chromosome> {
                 //alpha.exportToFile(String.format("%s%s%s_%.2f.txt", folderName, File.separator, iteration, alpha.fitness * 100));
                 s.logger.println(LogLevel.VERBOSE, "New alpha has fitness of: " + alpha.fitness + " and looks like: " + alpha);
             }
+        }
+
+        if (!population.isEmpty()) {
+            s.logger.logAlpha(-1, population.getLast());
         }
 
         s.logger.println(LogLevel.VERBOSE, "\n");

@@ -75,6 +75,12 @@ class JobsController:
                         "status": run_info.get("status", "Uninitialized"),
                         "created_at": descriptor.get("created_at"),
                         "updated_at": run_info.get("updated_at"),
+                        "started_at": run_info.get("started_at"),
+                        "finished_at": run_info.get("finished_at"),
+                        "duration_seconds": run_info.get("duration_seconds"),
+                        "java_started_at": run_info.get("java_started_at"),
+                        "java_finished_at": run_info.get("java_finished_at"),
+                        "java_duration_seconds": run_info.get("java_duration_seconds"),
                     }
                 }
 
@@ -112,6 +118,12 @@ class JobsController:
                         "status": run_info.get("status", "Uninitialized"),
                         "created_at": descriptor.get("created_at"),
                         "updated_at": run_info.get("updated_at"),
+                        "started_at": run_info.get("started_at"),
+                        "finished_at": run_info.get("finished_at"),
+                        "duration_seconds": run_info.get("duration_seconds"),
+                        "java_started_at": run_info.get("java_started_at"),
+                        "java_finished_at": run_info.get("java_finished_at"),
+                        "java_duration_seconds": run_info.get("java_duration_seconds"),
                     },
                 }, 200
             except FileNotFoundError:
@@ -156,9 +168,16 @@ class JobsController:
             descriptor_path = job_dir / "descriptor.job"
             try:
                 descriptor = jobCreationService._read_descriptor(job_dir)
+                started_at = self._utc_now()
                 descriptor["run_info"] = {
                     "status": "Running",
-                    "updated_at": self._utc_now(),
+                    "updated_at": started_at,
+                    "started_at": started_at,
+                    "finished_at": None,
+                    "duration_seconds": None,
+                    "java_started_at": None,
+                    "java_finished_at": None,
+                    "java_duration_seconds": None,
                 }
                 jobCreationService._write_json(descriptor_path, descriptor)
                 self._emit_run_status(key, descriptor["run_info"]["status"], descriptor["run_info"]["updated_at"])
@@ -177,6 +196,16 @@ class JobsController:
             def run_worker():
                 proc: Optional[subprocess.Popen[str]] = None
                 try:
+                    java_started_at = self._utc_now()
+                    self._update_run_status(
+                        job_dir,
+                        "Running",
+                        {
+                            "java_started_at": java_started_at,
+                            "java_finished_at": None,
+                            "java_duration_seconds": None,
+                        },
+                    )
                     proc = subprocess.Popen(
                         command,
                         stdout=subprocess.PIPE,
@@ -208,8 +237,16 @@ class JobsController:
                                 )
 
                     exit_code = proc.wait()
+                    java_finished_at = self._utc_now()
+                    self._update_run_status(
+                        job_dir,
+                        "Calculating stats" if exit_code == 0 else "Error",
+                        {
+                            "java_finished_at": java_finished_at,
+                            "java_duration_seconds": self._duration_seconds(java_started_at, java_finished_at),
+                        },
+                    )
                     if exit_code == 0:
-                        self._update_run_status(job_dir, "Calculating stats")
                         self._emit_run_status(key, "Calculating stats", self._utc_now())
                         try:
                             precompute_default_stats(job_dir)
@@ -223,10 +260,26 @@ class JobsController:
                     else:
                         status = "Error"
 
-                    self._update_run_status(job_dir, status)
+                    finished_at = self._utc_now()
+                    self._update_run_status(
+                        job_dir,
+                        status,
+                        {
+                            "finished_at": finished_at,
+                            "duration_seconds": self._run_duration_seconds(job_dir, finished_at),
+                        },
+                    )
                     self._emit_run_status(key, status, self._utc_now())
                 except Exception:
-                    self._update_run_status(job_dir, "Error")
+                    finished_at = self._utc_now()
+                    self._update_run_status(
+                        job_dir,
+                        "Error",
+                        {
+                            "finished_at": finished_at,
+                            "duration_seconds": self._run_duration_seconds(job_dir, finished_at),
+                        },
+                    )
                     self._emit_run_status(key, "Error", self._utc_now())
                 finally:
                     if key in self._runs:
@@ -261,7 +314,15 @@ class JobsController:
                     pass
 
             job_dir = jobCreationService.resolve_job_dir(username, jobid)
-            self._update_run_status(job_dir, "Error")
+            finished_at = self._utc_now()
+            self._update_run_status(
+                job_dir,
+                "Error",
+                {
+                    "finished_at": finished_at,
+                    "duration_seconds": self._run_duration_seconds(job_dir, finished_at),
+                },
+            )
             self._emit_run_status(key, "Error", self._utc_now())
 
             try:
@@ -384,16 +445,37 @@ class JobsController:
             except Exception:
                 pass
 
-    def _update_run_status(self, job_dir: Path, status: str) -> None:
+    def _update_run_status(self, job_dir: Path, status: str, updates: dict | None = None) -> None:
         try:
             descriptor = jobCreationService._read_descriptor(job_dir)
-            descriptor["run_info"] = {
-                "status": status,
-                "updated_at": self._utc_now(),
-            }
+            run_info = descriptor.get("run_info") or {}
+            run_info["status"] = status
+            run_info["updated_at"] = self._utc_now()
+            if updates:
+                run_info.update(updates)
+            descriptor["run_info"] = run_info
             jobCreationService._write_json(job_dir / "descriptor.job", descriptor)
         except Exception:
             pass
+
+    def _run_duration_seconds(self, job_dir: Path, finished_at: str) -> float | None:
+        try:
+            descriptor = jobCreationService._read_descriptor(job_dir)
+            started_at = (descriptor.get("run_info") or {}).get("started_at")
+            return self._duration_seconds(started_at, finished_at)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _duration_seconds(started_at: str | None, finished_at: str | None) -> float | None:
+        if not started_at or not finished_at:
+            return None
+        try:
+            start = datetime.fromisoformat(started_at)
+            finish = datetime.fromisoformat(finished_at)
+            return max(0.0, (finish - start).total_seconds())
+        except Exception:
+            return None
 
     def _emit_run_status(self, room: str, status: str, updated_at: str) -> None:
         try:

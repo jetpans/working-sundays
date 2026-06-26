@@ -35,7 +35,7 @@ public class MatrixChromosome extends Chromosome {
             this.constraints.add(c);
             this.works.add(c.works);
             for (int i : c.works) {
-                this.worksMatrix.set(this.works.size() - 1, i, 1);
+                this.worksMatrix.set(this.works.size() - 1, i, p.data.storeDataMap.get(id).radius);
             }
             this.antiModel.add(new ArrayList<>());
             this.model.add(new ArrayList<>());

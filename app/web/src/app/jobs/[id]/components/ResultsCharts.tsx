@@ -4,6 +4,11 @@ export interface FitnessPoint {
   step: number;
   iteration: number | null;
   fitness: number;
+  global_fitness?: number;
+  best_global_fitness?: number;
+  incoming_alpha_fitness?: number;
+  elapsed_ms?: number;
+  timestamp_ms?: number;
   line: number;
 }
 
@@ -26,10 +31,22 @@ const PADDING = 34;
 
 export function FitnessHistoryChart({ points }: FitnessHistoryChartProps) {
   if (points.length === 0) {
-    return <EmptyChart message="No fitness history found in run.log" />;
+    return <EmptyChart message="No fitness history found in fitness_history.csv" />;
   }
 
-  const values = points.map((point) => point.fitness);
+  const hasNewFitnessHistory = points.every(
+    (point) =>
+      Number.isFinite(point.global_fitness) &&
+      Number.isFinite(point.best_global_fitness),
+  );
+
+  if (!hasNewFitnessHistory) {
+    return <EmptyChart message="No fitness history found in fitness_history.csv" />;
+  }
+
+  const incomingValues = points.map((point) => point.global_fitness as number);
+  const incumbentValues = points.map((point) => point.best_global_fitness as number);
+  const values = [...incomingValues, ...incumbentValues];
   const minValue = Math.min(...values);
   const maxValue = Math.max(...values);
   const valueSpan = maxValue - minValue || 1;
@@ -40,8 +57,12 @@ export function FitnessHistoryChart({ points }: FitnessHistoryChartProps) {
   const yFor = (value: number) =>
     CHART_HEIGHT - PADDING - ((value - minValue) / valueSpan) * (CHART_HEIGHT - PADDING * 2);
 
-  const path = points
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${xFor(index)} ${yFor(point.fitness)}`)
+  const incomingPath = incomingValues
+    .map((value, index) => `${index === 0 ? "M" : "L"} ${xFor(index)} ${yFor(value)}`)
+    .join(" ");
+
+  const incumbentPath = incumbentValues
+    .map((value, index) => `${index === 0 ? "M" : "L"} ${xFor(index)} ${yFor(value)}`)
     .join(" ");
 
   const sampledPoints = points.filter(
@@ -70,23 +91,52 @@ export function FitnessHistoryChart({ points }: FitnessHistoryChartProps) {
           y2={CHART_HEIGHT - PADDING}
           stroke="#cbd5e1"
         />
-        <path d={path} fill="none" stroke="#2563eb" strokeWidth="2.5" />
+        <path d={incomingPath} fill="none" stroke="#2563eb" strokeWidth="2.5" />
+        <path
+          d={incumbentPath}
+          fill="none"
+          stroke="#16a34a"
+          strokeDasharray="7 5"
+          strokeLinecap="round"
+          strokeWidth="2.5"
+        />
         {sampledPoints.map((point) => {
           const index = points.indexOf(point);
+          const incomingFitness = point.global_fitness ?? point.fitness;
+          const incumbentFitness = point.best_global_fitness ?? point.fitness;
           return (
             <circle
               key={`${point.step}-${point.line}`}
               cx={xFor(index)}
-              cy={yFor(point.fitness)}
+              cy={yFor(incomingFitness)}
               r="2.5"
               fill="#1d4ed8"
             >
               <title>
-                {`Step ${point.step}, iteration ${point.iteration ?? "n/a"}: ${point.fitness.toFixed(3)}`}
+                {`Step ${point.step}, iteration ${point.iteration ?? "n/a"}: after incoming ${incomingFitness.toFixed(3)}, incumbent ${incumbentFitness.toFixed(3)}`}
               </title>
             </circle>
           );
         })}
+        <g className="text-[11px]">
+          <line x1={PADDING + 4} y1={PADDING - 14} x2={PADDING + 28} y2={PADDING - 14} stroke="#2563eb" strokeWidth="2.5" />
+          <text x={PADDING + 34} y={PADDING - 10} className="fill-slate-600">
+            After incoming
+          </text>
+          <line
+            x1={PADDING + 130}
+            y1={PADDING - 14}
+            x2={PADDING + 154}
+            y2={PADDING - 14}
+            stroke="#16a34a"
+            strokeDasharray="7 5"
+            strokeLinecap="round"
+            strokeWidth="2.5"
+          />
+          <text x={PADDING + 160} y={PADDING - 10} className="fill-slate-600">
+            Global incumbent
+          </text>
+        </g>
         <text x={PADDING} y={20} className="fill-slate-500 text-[11px]">
           {maxValue.toFixed(3)}
         </text>
@@ -94,18 +144,18 @@ export function FitnessHistoryChart({ points }: FitnessHistoryChartProps) {
           {minValue.toFixed(3)}
         </text>
         <text x={CHART_WIDTH - PADDING} y={CHART_HEIGHT - 8} textAnchor="end" className="fill-slate-500 text-[11px]">
-          {points.length} improvements
+          {points.length} updates
         </text>
       </svg>
       <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-slate-600">
         <div>
-          <span className="font-medium text-slate-800">First:</span> {points[0].fitness.toFixed(3)}
+          <span className="font-medium text-slate-800">First update:</span> {incomingValues[0].toFixed(3)}
         </div>
         <div>
-          <span className="font-medium text-slate-800">Best:</span> {maxValue.toFixed(3)}
+          <span className="font-medium text-slate-800">Best incumbent:</span> {Math.max(...incumbentValues).toFixed(3)}
         </div>
         <div>
-          <span className="font-medium text-slate-800">Last:</span> {points[points.length - 1].fitness.toFixed(3)}
+          <span className="font-medium text-slate-800">Last incumbent:</span> {incumbentValues[incumbentValues.length - 1].toFixed(3)}
         </div>
       </div>
     </div>

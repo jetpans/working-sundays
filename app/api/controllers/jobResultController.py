@@ -1,5 +1,5 @@
+import csv
 import json
-import re
 
 from flask import request
 
@@ -26,12 +26,6 @@ class JobResultController:
         self.register_routes()
 
     def register_routes(self):
-        iteration_pattern = re.compile(r"Iteration:\s*(\d+)", re.IGNORECASE)
-        fitness_pattern = re.compile(
-            r"New alpha has fitness of:\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)",
-            re.IGNORECASE,
-        )
-
         def _square_corners_latlon(lat, lon, half_side_m):
             from math import radians, degrees, sin, cos
             R = 6371000.0
@@ -167,30 +161,36 @@ class JobResultController:
         def get_fitness_history(username: str, jobid: str):
             try:
                 job_dir = jobCreationService.resolve_job_dir(username, jobid)
-                run_log_path = job_dir / "run.log"
-                if not run_log_path.exists():
+                history_path = job_dir / "results" / "fitness_history.csv"
+                if not history_path.exists():
                     return {"success": True, "data": {"points": []}}, 200
 
                 points = []
-                last_iteration = None
-                lines = run_log_path.read_text(encoding="utf-8", errors="ignore").splitlines()
-                for line_number, line in enumerate(lines, 1):
-                    iteration_match = iteration_pattern.search(line)
-                    if iteration_match:
-                        last_iteration = int(iteration_match.group(1))
+                with history_path.open("r", encoding="utf-8", newline="") as fh:
+                    for row_number, row in enumerate(csv.DictReader(fh), 1):
+                        try:
+                            iteration = int(row["iteration"]) if row.get("iteration") else None
+                            global_fitness = float(row["global_fitness"])
+                            best_global_fitness = float(row["best_global_fitness"])
+                            incoming_alpha_fitness = float(row["incoming_alpha_fitness"])
+                            elapsed_ms = int(row["elapsed_ms"])
+                            timestamp_ms = int(row["timestamp_ms"])
+                        except (KeyError, TypeError, ValueError):
+                            continue
 
-                    fitness_match = fitness_pattern.search(line)
-                    if not fitness_match:
-                        continue
-
-                    points.append(
-                        {
-                            "step": len(points) + 1,
-                            "iteration": last_iteration,
-                            "fitness": float(fitness_match.group(1)),
-                            "line": line_number,
-                        }
-                    )
+                        points.append(
+                            {
+                                "step": len(points) + 1,
+                                "iteration": iteration,
+                                "fitness": global_fitness,
+                                "global_fitness": global_fitness,
+                                "best_global_fitness": best_global_fitness,
+                                "incoming_alpha_fitness": incoming_alpha_fitness,
+                                "elapsed_ms": elapsed_ms,
+                                "timestamp_ms": timestamp_ms,
+                                "line": row_number,
+                            }
+                        )
 
                 return {"success": True, "data": {"points": points}}, 200
             except FileNotFoundError:
